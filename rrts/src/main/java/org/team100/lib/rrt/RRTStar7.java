@@ -60,7 +60,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
     private double radius;
 
     private SinglePath<N4> _single_sigma_best;
-    public boolean curves = true;
 
     public RRTStar7(T model, Sample<N4> sample, KDNode<Node<N4>> T_a, KDNode<Node<N4>> T_b) {
         _model = model;
@@ -90,11 +89,21 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
         // x_n
         KDNearNode<Node<N4>> x_nearestA = BangBangNearest(x_rand, _T_a, timeForward);
-        if (x_nearestA == null)
+        if (x_nearestA == null) {
+            if (DEBUG) System.out.println("nothing near");
             return 0;
+        }
 
         // includes states and controls
-        Trajectory phiA = BangBangSteer(_model::clear, x_nearestA._nearest.getState(), x_rand, timeForward);
+        // note the resulting trajectory is reversed if time is reversed.
+        Trajectory phiA = null;
+        if (timeForward) {
+            // we're looking in T_a so the new node is later
+            phiA = BangBangSteer(_model::clear, x_nearestA._nearest.getState(), x_rand);
+        } else {
+            // we're looking in T_b so the new node is earlier
+            phiA = BangBangSteer(_model::clear, x_rand, x_nearestA._nearest.getState());
+        }
         if (phiA == null)
             return 0;
 
@@ -104,9 +113,24 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         // now we have a clear trajectory from nearest to rand.
 
         double tMaxA = Math.max(phiA.x.s1.t + phiA.x.s2.t, phiA.y.s1.t + phiA.y.s2.t);
+        final Matrix<N4, N1> x_iA = new Matrix<>(Nat.N4(), Nat.N1(),
+                new double[] { phiA.x.i, phiA.x.idot, phiA.y.i, phiA.y.idot });
+        final Matrix<N4, N1> x_gA = new Matrix<>(Nat.N4(), Nat.N1(),
+                new double[] { phiA.x.g, phiA.x.gdot, phiA.y.g, phiA.y.gdot });
+
+        if (timeForward) {
+            // the probe point should be the goal state
+            if (!x_rand.isEqual(x_gA, 0.001))
+                throw new IllegalArgumentException();
+        } else {
+            // the probe point should be the initial state
+            if (!x_rand.isEqual(x_iA, 0.001))
+                throw new IllegalArgumentException();
+        }
+
         Node<N4> freeEndA = null;
 
-        if (curves) {
+        {
             // make lots of little segments
             double tStep = 0.1;
             Node<N4> source = x_nearestA._nearest;
@@ -127,13 +151,18 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 }
                 if (tSoFar < tMaxA) {
                     // add one more segment to actually reach xrand
-                    Node<N4> target = new Node<>(x_rand);
+                    Node<N4> target = new Node<>(x_gA);
                     freeEndA = target;
-                    LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tMaxA - tSoFar);
                     InsertNode(randLink, _T_a);
                 }
+                // at this point the "leaf" of A should be "goal" which is the probe point
+                if (!x_rand.isEqual(freeEndA.getState(), 0.001))
+                    throw new IllegalArgumentException();
+                if (!x_gA.isEqual(freeEndA.getState(), 0.001))
+                    throw new IllegalArgumentException();
             } else {
-                // time is reversed, so walk the trajectory backwards
+                // time is reversed, so this is T_b, so walk the trajectory backwards
                 double tSoFar = 0;
                 for (double tSec = tMaxA; tSec >= 0; tSec -= tStep) {
                     tSoFar = tSec;
@@ -148,21 +177,22 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 }
                 if (tSoFar > 0) {
                     // add one more segment to actually reach xrand
-                    Node<N4> target = new Node<>(x_rand);
+                    if (DEBUG)
+                        System.out.printf("A2 last state %s\n", x_iA);
+                    Node<N4> target = new Node<>(x_iA);
                     freeEndA = target;
-                    LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tSoFar);
                     InsertNode(randLink, _T_a);
                 }
+                // in the reversed case, the "leaf" is the "initial" which is the probe point
+                if (!x_rand.isEqual(freeEndA.getState(), 0.001))
+                    throw new IllegalArgumentException();
+                if (!x_iA.isEqual(freeEndA.getState(), 0.001))
+                    throw new IllegalArgumentException();
             }
-        } else {
-            // just make one segment
-            // same for forward and reverse cases.
-            Node<N4> target = new Node<>(x_rand);
-            freeEndA = target;
-
-            LocalLink<N4> randLink = new LocalLink<>(x_nearestA._nearest, target, tMaxA);
-            InsertNode(randLink, _T_a);
         }
+
+        // at this point we should use freeEndA as the join point, not x_iA or x_gA.
 
         // SwapTrees();
 
@@ -174,79 +204,138 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             // note that the continuity requirement is not to match the state, it's to match
             // the time-reversed state, since the two trees have opposite time polarity.
 
-            KDNearNode<Node<N4>> x_nearestB = BangBangNearest(x_rand, _T_b, !timeForward);
+            // note we use the *actual* end state of the previous trajectory, not the
+            // original x_rand.
+            KDNearNode<Node<N4>> x_nearestB = BangBangNearest(freeEndA.getState(), _T_b, !timeForward);
             if (x_nearestB == null) {
                 SwapTrees();
                 return 1;
             }
 
-            Trajectory phiB = BangBangSteer(_model::clear, x_nearestB._nearest.getState(), x_rand, !timeForward);
+            Trajectory phiB = null;
+            if (timeForward) {
+                // we're looking in T_b which is later than T_a so the join is the initial
+                // state.
+                phiB = BangBangSteer(_model::clear, freeEndA.getState(), x_nearestB._nearest.getState());
+            } else {
+                // we're looking in T_a which is earlier than T_b so the join is the goal state
+                phiB = BangBangSteer(_model::clear, x_nearestB._nearest.getState(), freeEndA.getState());
+            }
             if (phiB == null) {
                 SwapTrees();
                 return 1;
             }
             double tMaxB = Math.max(phiB.x.s1.t + phiB.x.s2.t, phiB.y.s1.t + phiB.y.s2.t);
+            final Matrix<N4, N1> x_i = new Matrix<>(Nat.N4(), Nat.N1(),
+                    new double[] { phiB.x.i, phiB.x.idot, phiB.y.i, phiB.y.idot });
+            final Matrix<N4, N1> x_g = new Matrix<>(Nat.N4(), Nat.N1(),
+                    new double[] { phiB.x.g, phiB.x.gdot, phiB.y.g, phiB.y.gdot });
 
-            Node<N4> freeEndB = null;
-            if (curves) {
-                // make lots of little segments
-                double tStep = 0.1;
-                Node<N4> source = x_nearestB._nearest;
-                if (DEBUG)
-                    System.out.printf("phiB %s\n", phiB);
-                if (!timeForward) {
-                    double tSoFar = 0;
-                    for (double tSec = tStep; tSec <= tMaxB; tSec += tStep) {
-                        tSoFar = tSec;
-                        Node<N4> source1 = source;
-                        Matrix<N4, N1> state = SampleTrajectory(phiB, tSec);
-                        if (DEBUG)
-                            System.out.printf("A3 stepstate %s\n", state);
-                        Node<N4> target = new Node<>(state);
-                        freeEndB = target;
-                        LocalLink<N4> randLink = new LocalLink<>(source1, target, tStep);
-                        InsertNode(randLink, _T_b);
-                        source1 = target;
-                        source = source1;
-                    }
-                    if (tSoFar < tMaxB) {
-                        // add one more segment to actually reach xrand
-                        Node<N4> target = new Node<>(x_rand);
-                        freeEndB = target;
-                        LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
-                        InsertNode(randLink, _T_b);
-                    }
-                } else {
-                    // time is reversed, so walk the trajectory backwards
-                    double tSoFar = 0;
-                    for (double tSec = tMaxB; tSec >= 0; tSec -= tStep) {
-                        tSoFar = tSec;
-                        Matrix<N4, N1> state = SampleTrajectory(phiB, tSec);
-                        if (DEBUG)
-                            System.out.printf("A4 stepstate %s\n", state);
-                        Node<N4> target = new Node<>(state);
-                        freeEndB = target;
-                        LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
-                        InsertNode(randLink, _T_b);
-                        source = target;
-                    }
-                    if (tSoFar > 0) {
-                        // add one more segment to actually reach xrand
-                        if (DEBUG)
-                            System.out.printf("A4 last state %s\n", x_rand);
-                        Node<N4> target = new Node<>(x_rand);
-                        freeEndB = target;
-                        LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
-                        InsertNode(randLink, _T_b);
-                    }
+            if (timeForward) {
+                // if we're looking in the "other" tree in time-forward mode the probe
+                // point is the initial state
+                if (!x_rand.isEqual(x_i, 0.001)) {
+                    System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
+                    throw new IllegalArgumentException();
                 }
             } else {
-                // just make one segment
-                // same for forward and reverse cases.
-                Node<N4> target = new Node<>(x_rand);
-                freeEndB = target;
-                LocalLink<N4> randLink = new LocalLink<>(x_nearestB._nearest, target, tMaxB);
-                InsertNode(randLink, _T_b);
+                // if we're looking in the "other" tree in the time-reversed mode then we're
+                // looking at T_a, so the probe is the goal point.
+                if (!x_rand.isEqual(x_g, 0.001)) {
+                    System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
+                    throw new IllegalArgumentException();
+                }
+            }
+
+            // the returned endpoint may not actually be the same as the desired endpoint:
+            if (timeForward) {
+                // the B tree really is the backwards one, so the leaf is the "initial" node of
+                // the trajectory
+                if (!x_i.isEqual(freeEndA.getState(), 0.001)) {
+                    System.out.printf("%s %s %s\n", x_i, x_g, freeEndA.getState());
+                    throw new IllegalArgumentException();
+                    // SwapTrees();
+                    // return 1;
+                }
+            } else {
+                // the B tree is the forwards one, so the leaf is the "goal" node of the
+                // trajectory
+                if (!x_g.isEqual(freeEndA.getState(), 0.001)) {
+                    System.out.printf("%s %s %s\n", x_i, x_g, freeEndA.getState());
+                    throw new IllegalArgumentException();
+                    // SwapTrees();
+                    // return 1;
+                }
+            }
+
+            Node<N4> freeEndB = null;
+            // make lots of little segments
+            double tStep = 0.1;
+            Node<N4> source = x_nearestB._nearest;
+            if (DEBUG)
+                System.out.printf("phiB %s\n", phiB);
+            if (timeForward) {
+                double tSoFar = 0;
+                for (double tSec = tMaxB; tSec >= 0; tSec -= tStep) {
+                    tSoFar = tSec;
+                    // running the trajectory backwards to build tree B
+                    Matrix<N4, N1> state = SampleTrajectory(phiB, tSec);
+                    if (DEBUG)
+                        System.out.printf("A4 stepstate %s\n", state);
+                    Node<N4> target = new Node<>(state);
+                    freeEndB = target;
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
+                    InsertNode(randLink, _T_b);
+                    source = target;
+                }
+                if (tSoFar > 0) {
+                    // the t=0 state is the initial state x_i
+                    // add one more segment to actually reach the goal
+                    if (DEBUG)
+                        System.out.printf("A4 last state %s\n", x_i);
+                    Node<N4> target = new Node<>(x_i);
+                    freeEndB = target;
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tSoFar);
+                    InsertNode(randLink, _T_b);
+                }
+                // in the forward case for the "other" tree the "leaf" is the "initial" which is
+                // the probe point
+                if (!x_rand.isEqual(freeEndB.getState(), 0.001))
+                    throw new IllegalArgumentException();
+                if (!x_i.isEqual(freeEndB.getState(), 0.001))
+                    throw new IllegalArgumentException();
+            } else {
+                double tSoFar = 0;
+                for (double tSec = tStep; tSec <= tMaxB; tSec += tStep) {
+                    tSoFar = tSec;
+                    Matrix<N4, N1> state = SampleTrajectory(phiB, tSec);
+                    if (DEBUG)
+                        System.out.printf("A3 stepstate %s\n", state);
+                    Node<N4> target = new Node<>(state);
+                    freeEndB = target;
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tMaxB - tSoFar);
+                    InsertNode(randLink, _T_b);
+                    source = target;
+                }
+                if (tSoFar < tMaxB) {
+                    // add one more segment to actually reach the goal
+                    if (DEBUG)
+                        System.out.printf("A3 last state %s\n", x_g);
+
+                    Node<N4> target = new Node<>(x_g);
+                    // this seems correct: time reversed means T_b is actually T_a so the trajectory
+                    // goal is the join point
+                    freeEndB = target;
+                    LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
+                    InsertNode(randLink, _T_b);
+                }
+                // in the reverse case for the "other" tree the "leaf" is the "goal" which is
+                // the probe point
+                if (!x_rand.isEqual(freeEndB.getState(), 0.001))
+                    throw new IllegalArgumentException();
+                if (!x_g.isEqual(freeEndB.getState(), 0.001))
+                    throw new IllegalArgumentException();
+
             }
 
             // if we got here then we are finished constructing a path, and should stop
@@ -280,29 +369,22 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         _T_b = tmp;
     }
 
-    public void Optimize() {
-        SinglePath<N4> singlePath = _single_sigma_best;
+    public void Optimize(double frac1, double frac2) {
+        final List<SinglePath.Link<N4>> links = _single_sigma_best.getLinks();
 
-        // List<Matrix<N4, N1>> states = singlePath.getStates();
-        List<SinglePath.Link<N4>> links = singlePath.getLinks();
+        final int nodect = links.size();
+        final int node1 = (int) (nodect * frac1);
+        final int node2 = (int) (nodect * frac2);
 
-        int nodect = links.size();
-        int node1 = random.nextInt(nodect);
-        int node2 = random.nextInt(nodect);
-        // note that node1 and node2 could be the same
-        if (node1 > node2) {
-            int tmp = node1;
-            node1 = node2;
-            node2 = tmp;
-        }
         if (DEBUG)
             System.out.printf("%d %d\n", node1, node2);
+
         // now node1 is first
         // actually we want the sub-list
         List<SinglePath.Link<N4>> sublist = links.subList(node1, node2 + 1);
         // these could be the same, just replace a single link.
-        Matrix<N4, N1> state1 = sublist.get(0).x_i;
-        Matrix<N4, N1> state2 = sublist.get(sublist.size() - 1).x_g;
+        final Matrix<N4, N1> state1 = sublist.get(0).x_i;
+        final Matrix<N4, N1> state2 = sublist.get(sublist.size() - 1).x_g;
         double cost = 0;
         for (SinglePath.Link<N4> link : sublist) {
             cost += link.cost;
@@ -310,7 +392,8 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
         // try to get there
 
-        Trajectory phiA = BangBangSteer(_model::clear, state1, state2, true);
+        // always returns the given intial state; might return a different final state.
+        Trajectory phiA = BangBangSteer(_model::clear, state1, state2);
         if (phiA == null)
             return;
 
@@ -320,25 +403,35 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             return;
 
         // we can do better
-        List<SinglePath.Link<N4>> replacement = new ArrayList<>();
+        final List<SinglePath.Link<N4>> replacement = new ArrayList<>();
 
         double tStep = 0.1;
 
+        // use the returned trajectory endpoints
+        // final Matrix<N4,N1> state_i = new Matrix<>(Nat.N4(), Nat.N1(), new double[] {
+        // phiA.x.i, phiA.x.idot, phiA.y.i, phiA.y.idot });
+        final Matrix<N4, N1> state_g = new Matrix<>(Nat.N4(), Nat.N1(),
+                new double[] { phiA.x.g, phiA.x.gdot, phiA.y.g, phiA.y.gdot });
+
         double tSoFar = 0;
+        // Matrix<N4,N1> state_interior = state_i;
+        Matrix<N4, N1> state_interior = state1;
         for (double tSec = tStep; tSec <= tMaxA; tSec += tStep) {
             tSoFar = tSec;
-            Matrix<N4, N1> state = SampleTrajectory(phiA, tSec);
-            SinglePath.Link<N4> randLink = new SinglePath.Link<>(state1, state, tStep);
+            final Matrix<N4, N1> state = SampleTrajectory(phiA, tSec);
+            SinglePath.Link<N4> randLink = new SinglePath.Link<>(state_interior, state, tStep);
             replacement.add(randLink);
-            state1 = state;
+            state_interior = state;
         }
         if (tSoFar < tMaxA) {
             // add one more segment to actually reach xrand
-            SinglePath.Link<N4> randLink = new SinglePath.Link<>(state1, state2, tStep);
+            SinglePath.Link<N4> randLink = new SinglePath.Link<>(state_interior, state_g, tMaxA - tSoFar);
             replacement.add(randLink);
         }
 
+        // this removes the sublist items from the links list
         sublist.clear();
+        // insert the replacement links at the node1 position
         links.addAll(node1, replacement);
         _single_sigma_best = new SinglePath<>(links);
 
@@ -417,6 +510,8 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      * 
      * @param xNew     the goal state (x xdot y ydot)
      * @param rootNode the tree to look through
+     * @return the nearest node, which will be earlier than xNew if time is forward,
+     *         and later if time is reversed.
      */
     KDNearNode<Node<N4>> BangBangNearest(Matrix<N4, N1> xNew, KDNode<Node<N4>> rootNode, boolean timeForward) {
         // For now, use the Near function, which uses the "radius". Maybe
@@ -429,8 +524,10 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             // rescore each node.
             double tOptimal;
             if (timeForward) {
+                // time forward means xNew is in the future
                 tOptimal = tOptimal(node.node.getState(), xNew, MAX_U);
             } else {
+                // time backward means xNew is in the past
                 tOptimal = tOptimal(xNew, node.node.getState(), MAX_U);
             }
             if (tOptimal < tMin) {
@@ -438,10 +535,13 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 bestNode = node.node;
             }
         }
-        if (tMin == Double.MAX_VALUE)
+        if (tMin == Double.MAX_VALUE) {
+            if (DEBUG) System.out.println("no optimal time");
             return null;
+        }
 
         return new KDNearNode<>(tMin, bestNode);
+
     }
 
     /**
@@ -601,24 +701,21 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      * 
      * so we need a way to sample the trajectory.
      * 
+     * if time is reversed the caller should swap the arguments so that x_i is
+     * temporally earlier.
+     * 
      * @param free        predicate indicating collision-free
-     * @param x_i         initial state
+     * @param x_i         initial state, always earlier than the goal.
      * @param x_g         goal state
-     * @param timeForward
+     * @param timeForward swaps x_i and x_g if true.
      * @return a feasible trajectory from initial to goal, or null if none is
      *         feasible.
      */
     static Trajectory BangBangSteer(
             Predicate<Matrix<N4, N1>> free,
             Matrix<N4, N1> x_i,
-            Matrix<N4, N1> x_g,
-            boolean timeForward) {
-        Trajectory trajectory;
-        if (timeForward) {
-            trajectory = optimalTrajectory(x_i, x_g, MAX_U);
-        } else {
-            trajectory = optimalTrajectory(x_g, x_i, MAX_U);
-        }
+            Matrix<N4, N1> x_g) {
+        Trajectory trajectory = optimalTrajectory(x_i, x_g, MAX_U);
         if (trajectory == null)
             return null;
         double tMax = Math.max(trajectory.x.s1.t + trajectory.x.s2.t, trajectory.y.s1.t + trajectory.y.s2.t);

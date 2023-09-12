@@ -29,7 +29,6 @@ public class TestTrees {
         // note fixed rand seed so the tests here will be deterministic
         RRTStar7<FullStateHolonomicArena> solver = new RRTStar7<>(arena, new Sample<>(arena, 0), T_a, T_b);
         solver.setRadius(3);
-        solver.curves = false; // don't add a zillion little segments
         // it does a bunch of sampling before it finds a feasible point.
         // whoops not anymore.
         // for (int i = 0; i < 3; ++i) {

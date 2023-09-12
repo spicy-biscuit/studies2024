@@ -21,15 +21,27 @@ public class FullStateHolonomicArena implements Arena<N4> {
     private static final double ROBOT_RADIUS = .4;
     private static final double GOAL_RADIUS = 0.4;
 
-    // init and goal are motionless
-
+    // realistic initial and goal states
     private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 15.5, 0, 6.75, 0 });
     private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 1.93, 0, 2.748, 0 });
-    // private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 10, 0, 4, 0 });
-    // private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 6, 0, 2, 0 });
-   
-    private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 0, -3, 0, -3 });
-    private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 16, 3, 8, 3 });
+
+    // closer initial/goal for testing
+    // private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 10, 0, 4, 0 });
+    // private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 6, 0, 2, 0 });
+
+    // conservative speed limit
+    // private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(),
+    //         new double[] { 0, -3, 0, -3 });
+    // private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(),
+    //         new double[] { 16, 3, 8, 3 });
+
+    // higher speed limit
+    private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(),
+    new double[] { 0, -5, 0, -5 });
+    private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(),
+    new double[] { 16, 5, 8, 5 });
 
     // used for steering
     // private final double _gamma;
@@ -98,7 +110,6 @@ public class FullStateHolonomicArena implements Arena<N4> {
 
     /**
      * config is (x xdot y ydot)
-     * so we check x and y only
      */
     @Override
     public boolean clear(Matrix<N4, N1> config) {
@@ -110,15 +121,23 @@ public class FullStateHolonomicArena implements Arena<N4> {
             return false;
         if (config.get(2, 0) + ROBOT_RADIUS > _max.get(2, 0))
             return false;
-            // poor-man's velocity limit.  TODO: add bang-cruise-bang solutions.
-        if (config.get(1, 0) < _min.get(1, 0))
+        // poor-man's velocity limit. TODO: add bang-cruise-bang solutions.
+        if (config.get(1, 0) < _min.get(1, 0)) {
+            //System.out.printf("%f %f\n", config.get(1, 0), _min.get(1, 0));
             return false;
-        if (config.get(3, 0) < _min.get(3, 0))
+        }
+        if (config.get(3, 0) < _min.get(3, 0)) {
+            // System.out.printf("%f %f\n", config.get(3, 0), _min.get(1, 0));
             return false;
-        if (config.get(1, 0) > _max.get(1, 0))
+        }
+        if (config.get(1, 0) > _max.get(1, 0)) {
+            // System.out.printf("%f %f\n", config.get(1, 0), _max.get(1, 0));
             return false;
-        if (config.get(3, 0) > _max.get(3, 0))
+        }
+        if (config.get(3, 0) > _max.get(3, 0)) {
+            // System.out.printf("%f %f\n", config.get(3, 0), _max.get(1, 0));
             return false;
+        }
 
         // robot-obstacle collision
         for (Obstacle obstacle : _obstacles) {
