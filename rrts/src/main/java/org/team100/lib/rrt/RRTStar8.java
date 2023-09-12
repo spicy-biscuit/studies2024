@@ -20,12 +20,10 @@ import org.team100.lib.graph.LinkInterface;
 import org.team100.lib.graph.LocalLink;
 import org.team100.lib.graph.NearNode;
 import org.team100.lib.graph.Node;
-import org.team100.lib.index.KDModel;
 import org.team100.lib.index.KDNearNode;
 import org.team100.lib.index.KDNode;
 import org.team100.lib.index.KDTree;
 import org.team100.lib.math.ShootingSolver;
-import org.team100.lib.planner.RobotModel;
 import org.team100.lib.planner.Solver;
 import org.team100.lib.random.MersenneTwister;
 import org.team100.lib.space.Path;
@@ -1128,7 +1126,7 @@ public class RRTStar8<T extends Arena<N4>> implements Solver<N4> {
             return tIminusGplus;
 
         }
-        if (Double.isNaN(tIminusGplus) || tIminusGplus > 1e100 | tIminusGplus < 0) {
+        if (Double.isNaN(tIminusGplus) || tIminusGplus > 1e100 || tIminusGplus < 0) {
             return tIplusGminus;
         }
         // if we got here, then they're both actually numbers.
@@ -1622,9 +1620,7 @@ public class RRTStar8<T extends Arena<N4>> implements Solver<N4> {
      */
     ArrayList<NearNode<N4>> Near(Matrix<N4, N1> x_new, KDNode<Node<N4>> rootNode) {
         ArrayList<NearNode<N4>> nearNodes = new ArrayList<>();
-        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> {
-            nearNodes.add(new NearNode<>(node, dist));
-        });
+        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> nearNodes.add(new NearNode<>(node, dist)));
         return nearNodes;
     }
 
@@ -1756,7 +1752,6 @@ public class RRTStar8<T extends Arena<N4>> implements Solver<N4> {
 
         // Since we're visiting all the nodes it's very cheap to verify the total
         // distance
-        double totalDistance = 0;
 
         while (true) {
             if (visited.contains(node)) {
@@ -1769,7 +1764,6 @@ public class RRTStar8<T extends Arena<N4>> implements Solver<N4> {
             LinkInterface<N4> incoming = node.getIncoming();
             if (incoming == null)
                 break;
-            totalDistance += incoming.get_linkDist();
             // walking backwards here, so the "source" is actually the "target" of the link.
             SinglePath.Link<N4> link = new SinglePath.Link<>(
                     incoming.get_target().getState(),

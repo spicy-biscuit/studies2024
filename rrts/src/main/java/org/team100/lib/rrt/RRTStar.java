@@ -71,7 +71,7 @@ public class RRTStar<States extends Num, T extends KDModel<States> & RobotModel<
             return 0;
 
         double radius = _gamma * Math.pow(
-                Math.log(stepNo + 1) / (stepNo + 1),
+                Math.log(stepNo + 1.0) / (stepNo + 1.0),
                 1.0 /  _rootNode.getValue().getState().getNumRows());
 
         List<NearNode<States>> nearNodes = new ArrayList<>();
@@ -186,7 +186,6 @@ public class RRTStar<States extends Num, T extends KDModel<States> & RobotModel<
 
     @Override
     public SinglePath<States> getBestSinglePath() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'getBestSinglePath'");
     }
 }

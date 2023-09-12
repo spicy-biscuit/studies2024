@@ -53,7 +53,7 @@ public class PendulumArena2 implements Arena<N2> {
     double h = 0.1; // TODO: this is surely wrong. what time interval to use?
 
     // see pend_rrt.m
-    private final double l = 1; // length meter
+    private static final double l = 1; // length meter
     private final double _g; // gravity m/s/s
 
     // private int stepNo;
@@ -85,7 +85,6 @@ public class PendulumArena2 implements Arena<N2> {
      */
     @Override
     public double dist(Matrix<N2, N1> start, Matrix<N2, N1> end) {
-
         double x_start1 = start.get(0, 0);
         double x_start2 = start.get(1, 0);
         double x_end1 = end.get(0, 0);

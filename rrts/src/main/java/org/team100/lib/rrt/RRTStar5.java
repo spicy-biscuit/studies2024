@@ -152,7 +152,6 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
                         if (DEBUG)
                             System.out.printf("FOUND feasible link x1: %s x2: %s sol: %s\n",
                                     Util.matStr(x1), Util.matStr(x2), sol);
-                        // TODO: do something with the solution u value
                         // add a node in a corresponding to the near node in b
                         LocalLink<N2> newInA = new LocalLink<>(newNode, new Node<>(nearNode.node.getState()),
                                 Math.abs(sol.dt));
@@ -235,7 +234,6 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
 
             // double x1dot = x_nearest2;
             // random control
-            // TODO: shape the sampling to look more "bang bang" like.
             // double u = MIN_U + (MAX_U - MIN_U) * random.nextDouble();
             double u = MAX_U + random.nextGaussian(0, MAX_U / 10);
             if (u > MAX_U)
@@ -263,7 +261,6 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
             x_new2 = newxxx.get(1, 0);
 
             // reject samples off the edge of the world
-            // TODO: this is actually a cylindrical space, so make it so
             if (x_new1 < min.get(0, 0) || x_new1 > max.get(0, 0) || x_new2 < min.get(1, 0) || x_new2 > max.get(1, 0)) {
                 if (DEBUG)
                     System.out.printf(
@@ -377,9 +374,7 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
      */
     List<NearNode<N2>> Near(Matrix<N2, N1> x_new, KDNode<Node<N2>> rootNode) {
         List<NearNode<N2>> nearNodes = new ArrayList<>();
-        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> {
-            nearNodes.add(new NearNode<>(node, dist));
-        });
+        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> nearNodes.add(new NearNode<>(node, dist)));
         return nearNodes;
     }
 
@@ -486,7 +481,7 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
         if (stepNo < 1)
             throw new IllegalArgumentException();
         this.stepNo = stepNo;
-        this.radius = _gamma * Math.pow(Math.log(stepNo + 1) / (stepNo + 1), 0.5);
+        this.radius = _gamma * Math.pow(Math.log(stepNo + 1.0) / (stepNo + 1), 0.5);
     }
 
     static boolean same(Matrix<N2, N1> a, Matrix<N2, N1> b) {
@@ -495,7 +490,6 @@ public class RRTStar5<T extends KDModel<N2> & RobotModel<N2>> implements Solver<
 
     @Override
     public SinglePath<N2> getBestSinglePath() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'getBestSinglePath'");
     }
 }

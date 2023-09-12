@@ -14,7 +14,6 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.lang.reflect.InvocationTargetException;
 import java.text.NumberFormat;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -29,9 +28,7 @@ import org.team100.lib.geom.Obstacle;
 import org.team100.lib.graph.LinkInterface;
 import org.team100.lib.graph.Node;
 import org.team100.lib.index.KDNode;
-import org.team100.lib.index.KDTree;
 import org.team100.lib.planner.Runner;
-import org.team100.lib.planner.Solver;
 import org.team100.lib.rrt.RRTStar7;
 import org.team100.lib.space.Path;
 import org.team100.lib.space.Sample;
@@ -51,7 +48,6 @@ public class FullStateArenaView extends JComponent {
 
     private final Runner<N4> _rrtStar;
     private final Arena<N4> _robotModel;
-    private int framecounter;
 
     private Image _backgroundImage;
 
@@ -71,16 +67,13 @@ public class FullStateArenaView extends JComponent {
         final FullStateHolonomicArena arena = new FullStateHolonomicArena();
         KDNode<Node<N4>> T_a = new KDNode<>(new Node<>(arena.initial()));
         KDNode<Node<N4>> T_b = new KDNode<>(new Node<>(arena.goal()));
-        // final Solver<N4> solver = new RRTStar6<>(arena, new Sample<>(arena), 3, T_a,
-        // T_b);
         final RRTStar7<FullStateHolonomicArena> solver = new RRTStar7<>(arena,
                 new Sample<>(arena, new Random().nextInt()), T_a, T_b);
-        solver.setRadius(4); // hoo boy
+        solver.setRadius(5);
         // solver.SwapTrees();
         final Runner<N4> runner = new Runner<>(solver);
         final FullStateArenaView view = new FullStateArenaView(arena, runner, T_a, T_b);
 
-        // final JFrame frame = new FullStateArenaFrame(view);
         final JFrame frame = new JFrame();
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
@@ -96,20 +89,9 @@ public class FullStateArenaView extends JComponent {
         });
 
         // RRTStar7.DEBUG = true;
-        runner.runForDurationMS(100);
+        runner.runForDurationMS(75);
         //runner.runSamples(100);
-        // System.out.println("before");
-        // printTree(T_a.getValue(), 0);
 
-        // while (true) {
-        // if (solver.step() > 0) {
-        // break;
-        // }
-        // }
-        // System.out.println("A");
-        // printTree(T_a.getValue(), 0);
-        // System.out.println("B");
-        // printTree(T_b.getValue(), 0);
 
         SinglePath<N4> bestSinglePath = runner.getBestSinglePath();
         if (bestSinglePath == null) {
@@ -119,6 +101,7 @@ public class FullStateArenaView extends JComponent {
 
             pause(1000);
             // so now we should try to optimize it for awhile
+            // wow, a lot of iterations
             for (int i = 0; i < 100000; ++i) {
                 //if (i % 100 == 0)                System.out.println(i);
                 //if (i % 100 == 0) pause(500);
@@ -127,7 +110,9 @@ public class FullStateArenaView extends JComponent {
 
             // System.out.println(bestPath);
         }
+        System.out.printf("final path distance %7.3f\n", runner.getBestSinglePath().getDistance());
         System.out.println("done");
+
         // view.printPaths(bestPath);
 
         frame.repaint();
@@ -139,7 +124,6 @@ public class FullStateArenaView extends JComponent {
         // try {
         //     Thread.sleep(ms);
         // } catch (InterruptedException e) {
-        //     // TODO Auto-generated catch block
         //     e.printStackTrace();
         // }
     }
@@ -260,7 +244,6 @@ public class FullStateArenaView extends JComponent {
             return;
         if (DEBUG)
             System.out.println("renderRRTTree");
-        Line2D.Double line = new Line2D.Double();
         g.setStroke(new BasicStroke((float) (1.0 / scale)));
 
         // paint a big circle at each end
@@ -269,44 +252,6 @@ public class FullStateArenaView extends JComponent {
 
         renderTree(g, _T_a.getValue(), Color.GREEN);
         renderTree(g, _T_b.getValue(), Color.RED);
-
-        // for (Node<N4> node : KDTree.values(_T_a)) {
-        // LinkInterface<N4> incoming = node.getIncoming();
-        // if (incoming != null) {
-        // Node<N4> parent = incoming.get_source();
-        // Matrix<N4, N1> n = node.getState();
-        // Matrix<N4, N1> p = parent.getState();
-        // if (DEBUG)
-        // System.out.printf("A node %s parent %s\n"
-        // + n.toString(), p.toString());
-        // g.setColor(Color.GREEN);
-        // line.setLine(n.get(0, 0), n.get(2, 0), p.get(0, 0), p.get(2, 0));
-        // g.draw(line);
-        // double r = 0.05;
-        // g.setColor(Color.BLACK);
-        // g.fill(new Ellipse2D.Double(n.get(0,0)-r, n.get(2,0)-r,2*r,2*r));
-        // g.fill(new Ellipse2D.Double(p.get(0,0)-r, p.get(2,0)-r,2*r,2*r));
-        // }
-        // }
-
-        // for (Node<N4> node : KDTree.values(_T_b)) {
-        // LinkInterface<N4> incoming = node.getIncoming();
-        // if (incoming != null) {
-        // Node<N4> parent = incoming.get_source();
-        // Matrix<N4, N1> n = node.getState();
-        // Matrix<N4, N1> p = parent.getState();
-        // if (DEBUG)
-        // System.out.printf("B node %s parent %s\n"
-        // + n.toString(), p.toString());
-        // g.setColor(Color.RED);
-        // line.setLine(n.get(0, 0), n.get(2, 0), p.get(0, 0), p.get(2, 0));
-        // g.draw(line);
-        // double r = 0.05;
-        // g.setColor(Color.BLACK);
-        // g.fill(new Ellipse2D.Double(n.get(0,0)-r, n.get(2,0)-r,2*r,2*r));
-        // g.fill(new Ellipse2D.Double(p.get(0,0)-r, p.get(2,0)-r,2*r,2*r));
-        // }
-        // }
     }
 
     void printPaths(Path<N4> path) {
@@ -354,77 +299,33 @@ public class FullStateArenaView extends JComponent {
         Line2D.Double line = new Line2D.Double();
         g.setStroke(new BasicStroke((float) (3.0 / scale)));
 
-        // List<Matrix<N4, N1>> states = path.getStates();
         List<SinglePath.Link<N4>> links = path.getLinks();
-        // if (states.size() > 1) {
         if (links.size() > 1) {
             // first the line
-            {
+            
                 Iterator<SinglePath.Link<N4>> linkIter = links.iterator();
-                // Iterator<Matrix<N4, N1>> pathIter = states.iterator();
-                // Matrix<N4, N1> prev = pathIter.next();
-                // final int statect = states.size();
                 final int linkct = links.size();
                 int statei = 0;
-                // while (pathIter.hasNext()) {
                 while (linkIter.hasNext()) {
                     // TODO: make this reflect cost
-                    // g.setColor(new Color(1, (float) statei / statect, (float) (1.0 - (float)
-                    // statei / statect)));
                     g.setColor(new Color(1, (float) statei / linkct, (float) (1.0 - (float) statei / linkct)));
-                    // Matrix<N4, N1> curr = pathIter.next();
                     SinglePath.Link<N4> link = linkIter.next();
-                    // line.setLine(prev.get(0, 0), prev.get(2, 0), curr.get(0, 0), curr.get(2, 0));
                     line.setLine(link.x_i.get(0, 0), link.x_i.get(2, 0), link.x_g.get(0, 0), link.x_g.get(2, 0));
                     g.draw(line);
-                    // prev = curr;
                     ++statei;
                 }
-            }
+            
             // then the dots
-            {
+            
                 double r = 0.02;
                 g.setColor(Color.BLACK);
-                Iterator<SinglePath.Link<N4>> linkIter = links.iterator();
-                // Iterator<Matrix<N4, N1>> pathIter = states.iterator();
+                 linkIter = links.iterator();
                 while (linkIter.hasNext()) {
-                    // while (pathIter.hasNext()) {
-                    // Matrix<N4, N1> curr = pathIter.next();
                     SinglePath.Link<N4> link = linkIter.next();
-                    // g.fill(new Ellipse2D.Double(curr.get(0, 0) - r, curr.get(2, 0) - r, 2 * r, 2
-                    // * r));
                     g.fill(new Ellipse2D.Double(link.x_i.get(0, 0) - r, link.x_i.get(2, 0) - r, 2 * r, 2 * r));
                 }
-            }
+            
         }
-        // List<Matrix<N4, N1>> statesB = path.getStatesB();
-        // if (statesB.size() > 1) {
-        // Iterator<Matrix<N4, N1>> pathIter = statesB.iterator();
-        // Matrix<N4, N1> prev = pathIter.next();
-        // while (pathIter.hasNext()) {
-        // Matrix<N4, N1> curr = pathIter.next();
-
-        // g.setColor(Color.RED);
-        // line.setLine(prev.get(0, 0), prev.get(2, 0), curr.get(0, 0), curr.get(2, 0));
-        // g.draw(line);
-        // double r = 0.02;
-        // g.setColor(Color.BLACK);
-        // g.fill(new Ellipse2D.Double(curr.get(0, 0) - r, curr.get(2, 0) - r, 2 * r, 2
-        // * r));
-        // prev = curr;
-        // }
-        // }
-
-        // Matrix<N4, N1> nA = statesA.get(statesA.size() - 1);
-        // Matrix<N4, N1> nB = statesB.get(0);
-        // if (nA != null && nB != null) {
-        // g.setColor(Color.BLACK);
-        // line.setLine(nA.get(0, 0), nA.get(2, 0), nB.get(0, 0), nB.get(2, 0));
-        // g.draw(line);
-        // } else {
-        // System.out.println("NULLS");
-        // }
-
     }
 
     /** min and max are (x xdot y ydot) */

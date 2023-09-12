@@ -138,9 +138,7 @@ public class RRTStar3<States extends Num, T extends KDModel<States> & RobotModel
      */
     List<NearNode<States>> Near(Matrix<States, N1> x_new) {
         List<NearNode<States>> nearNodes = new ArrayList<>();
-        KDTree.near(_model, _rootNode, x_new, radius, (node, dist) -> {
-            nearNodes.add(new NearNode<>(node, dist));
-        });
+        KDTree.near(_model, _rootNode, x_new, radius, (node, dist) -> nearNodes.add(new NearNode<>(node, dist)));
         return nearNodes;
     }
 
@@ -219,13 +217,12 @@ public class RRTStar3<States extends Num, T extends KDModel<States> & RobotModel
             throw new IllegalArgumentException();
         this.stepNo = stepNo;
         this.radius = _gamma * Math.pow(
-                Math.log(stepNo + 1) / (stepNo + 1),
-                1.0 /  _rootNode.getValue().getState().getNumRows());
+                Math.log(stepNo + 1.0) / (stepNo + 1.0),
+                1.0 / _rootNode.getValue().getState().getNumRows());
     }
 
     @Override
     public SinglePath<States> getBestSinglePath() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'getBestSinglePath'");
     }
 }

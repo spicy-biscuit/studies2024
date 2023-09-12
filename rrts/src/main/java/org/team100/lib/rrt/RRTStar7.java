@@ -3,13 +3,10 @@ package org.team100.lib.rrt;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 import org.team100.lib.example.Arena;
@@ -18,18 +15,14 @@ import org.team100.lib.graph.LinkInterface;
 import org.team100.lib.graph.LocalLink;
 import org.team100.lib.graph.NearNode;
 import org.team100.lib.graph.Node;
-import org.team100.lib.index.KDModel;
 import org.team100.lib.index.KDNearNode;
 import org.team100.lib.index.KDNode;
 import org.team100.lib.index.KDTree;
-import org.team100.lib.math.ShootingSolver;
-import org.team100.lib.planner.RobotModel;
 import org.team100.lib.planner.Solver;
 import org.team100.lib.random.MersenneTwister;
 import org.team100.lib.space.Path;
 import org.team100.lib.space.Sample;
 import org.team100.lib.space.SinglePath;
-import org.team100.lib.util.Util;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
@@ -37,7 +30,6 @@ import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N2;
 import edu.wpi.first.math.numbers.N4;
-import edu.wpi.first.math.system.NumericalIntegration;
 
 /**
  * RRT* version 7
@@ -66,8 +58,7 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
     // mutable loop variables to make the loop code cleaner
     private double radius;
-    // TODO remove
-    private Path<N4> _sigma_best;
+
     private SinglePath<N4> _single_sigma_best;
     public boolean curves = true;
 
@@ -206,7 +197,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 if (!timeForward) {
                     double tSoFar = 0;
                     for (double tSec = tStep; tSec <= tMaxB; tSec += tStep) {
-                        // for (double tSec = 0; tSec <= tMaxB; tSec += tStep) {
                         tSoFar = tSec;
                         Node<N4> source1 = source;
                         Matrix<N4, N1> state = SampleTrajectory(phiB, tSec);
@@ -265,17 +255,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             // for now make a "path"
 
             if (freeEndB != null) {
-                Path<N4> p = GeneratePath(freeEndA, freeEndB);
-                if (_sigma_best == null) {
-                    System.out.printf("first path distance %7.3f\n", p.getDistance());
-                    _sigma_best = p;
-                } else {
-                    if (p.getDistance() < _sigma_best.getDistance()) {
-                        System.out.printf("new best path distance %7.3f\n", p.getDistance());
-                        _sigma_best = p;
-                    }
-                }
-                // TODO replace above with this
                 SinglePath<N4> sp = GenerateSinglePath(freeEndA, freeEndB);
                 if (_single_sigma_best == null) {
                     System.out.printf("first path distance %7.3f\n", sp.getDistance());
@@ -289,7 +268,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 // bail so that we can stop looking
                 return -1;
             }
-
 
             SwapTrees();
         }
@@ -317,7 +295,8 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             node1 = node2;
             node2 = tmp;
         }
-        if (DEBUG) System.out.printf("%d %d\n",node1,node2);
+        if (DEBUG)
+            System.out.printf("%d %d\n", node1, node2);
         // now node1 is first
         // actually we want the sub-list
         List<SinglePath.Link<N4>> sublist = links.subList(node1, node2 + 1);
@@ -363,33 +342,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         links.addAll(node1, replacement);
         _single_sigma_best = new SinglePath<>(links);
 
-    }
-
-    /**
-     * the parameters describe a link between initial and goal trees, the same
-     * state in both cases.
-     * 
-     * TODO: remove
-     * 
-     * @param x_1 Node in one tree
-     * @param x_2 Same state in the other tree
-     */
-    Path<N4> GeneratePath(Node<N4> x_1, Node<N4> x_2) {
-        if (!x_1.getState().isEqual(x_2.getState(), 0.001))
-            throw new IllegalArgumentException(
-                    "x1 " + x_1.getState().toString() + " != x2 " + x_2.getState().toString());
-
-        Path<N4> p_1 = walkParents(new HashSet<>(), x_1);
-        if (DEBUG)
-            System.out.println("p1 " + p_1);
-        Path<N4> p_2 = walkParents(new HashSet<>(), x_2);
-        if (DEBUG)
-            System.out.println("p2 " + p_2);
-        List<Matrix<N4, N1>> states_2 = p_2.getStatesA();
-        Collections.reverse(states_2);
-        // don't include the same point twice
-        states_2.remove(0);
-        return new Path<>(p_1.getDistance() + p_2.getDistance(), p_1.getStatesA(), states_2);
     }
 
     /**
@@ -718,7 +670,7 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
     public enum Solution {
         SWITCH, LIMIT, MIRROR
-    };
+    }
 
     public static class Trajectory {
         public static class Axis {
@@ -767,9 +719,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      * through x_mirror
      * 
      * this function returns the x_switch version.
-     * 
-     * TODO: return both t1 and t2
-     * TODO: something about waiting time? i think this all might be wrong.
      */
     public static double tSwitch(double i, double idot, double g, double gdot, double umax) {
         // if (RRTStar7.goalRight(i, idot, g, gdot, umax)) {
@@ -791,12 +740,11 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             return tIminusGplus;
 
         }
-        if (Double.isNaN(tIminusGplus) || tIminusGplus > 1e100 | tIminusGplus < 0) {
+        if (Double.isNaN(tIminusGplus) || tIminusGplus > 1e100 || tIminusGplus < 0) {
             return tIplusGminus;
         }
         // if we got here, then they're both actually numbers.
         // so just return the slower one for now.
-        // TODO: be clever about waiting time etc.
 
         // as specified in the paper (p2), we choose the *faster* of the
         // feasible paths as the tSwitch path.
@@ -1003,7 +951,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         return result;
     }
 
-
     /**
      * This is the method of Hauser et al [1] (see section D) to solve the two-point
      * boundary problem for a single double integrator, minimizing the control
@@ -1012,7 +959,6 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      * T^2a^2 + sigma(2T(idot+gdot) + 4(i-g))a - (gdot-idot)^2 = 0.
      * 
      * Note that the ParabolicRamp code works differently from this
-     * TODO: try that method
      * 
      * returns a two-part trajectory for one axis, or null if it fails.
      */
@@ -1137,9 +1083,7 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      */
     ArrayList<NearNode<N4>> Near(Matrix<N4, N1> x_new, KDNode<Node<N4>> rootNode) {
         ArrayList<NearNode<N4>> nearNodes = new ArrayList<>();
-        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> {
-            nearNodes.add(new NearNode<>(node, dist));
-        });
+        KDTree.near(_model, rootNode, x_new, radius, (node, dist) -> nearNodes.add(new NearNode<>(node, dist)));
         return nearNodes;
     }
 
@@ -1164,10 +1108,9 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         return allNodes;
     }
 
-    // TODO remove
     @Override
     public Path<N4> getBestPath() {
-        return _sigma_best;
+        return null;
     }
 
     @Override
@@ -1244,7 +1187,7 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
     @Override
     public void setStepNo(int stepNo) {
-
+        // stepno does nothing
     }
 
     public void setRadius(double radius) {

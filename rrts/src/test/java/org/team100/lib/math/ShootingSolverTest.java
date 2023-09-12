@@ -336,7 +336,6 @@ public class ShootingSolverTest {
         assertNotNull(sol);
         // since there are 2 free variables there is an infinite number
         // of solutions
-        // TODO: a different example.
         assertEquals(0.5, sol.u.get(0, 0), DELTA);
         assertEquals(1, sol.dt, DELTA);
     }
