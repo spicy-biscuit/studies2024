@@ -61,6 +61,8 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
     private SinglePath<N4> _single_sigma_best;
 
+    static boolean PARTIAL = true;
+
     public RRTStar7(T model, Sample<N4> sample, KDNode<Node<N4>> T_a, KDNode<Node<N4>> T_b) {
         _model = model;
         _sample = sample;
@@ -90,19 +92,21 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         // x_n
         KDNearNode<Node<N4>> x_nearestA = BangBangNearest(x_rand, _T_a, timeForward);
         if (x_nearestA == null) {
-            if (DEBUG) System.out.println("nothing near");
+            if (DEBUG)
+                System.out.println("nothing near");
             return 0;
         }
 
         // includes states and controls
         // note the resulting trajectory is reversed if time is reversed.
+        // for first half of bidirectional, partial is ok.
         Trajectory phiA = null;
         if (timeForward) {
             // we're looking in T_a so the new node is later
-            phiA = BangBangSteer(_model::clear, x_nearestA._nearest.getState(), x_rand);
+            phiA = BangBangSteer(_model::clear, x_nearestA._nearest.getState(), x_rand, true, true);
         } else {
             // we're looking in T_b so the new node is earlier
-            phiA = BangBangSteer(_model::clear, x_rand, x_nearestA._nearest.getState());
+            phiA = BangBangSteer(_model::clear, x_rand, x_nearestA._nearest.getState(), false, true);
         }
         if (phiA == null)
             return 0;
@@ -118,14 +122,17 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         final Matrix<N4, N1> x_gA = new Matrix<>(Nat.N4(), Nat.N1(),
                 new double[] { phiA.x.g, phiA.x.gdot, phiA.y.g, phiA.y.gdot });
 
-        if (timeForward) {
-            // the probe point should be the goal state
-            if (!x_rand.isEqual(x_gA, 0.001))
-                throw new IllegalArgumentException();
-        } else {
-            // the probe point should be the initial state
-            if (!x_rand.isEqual(x_iA, 0.001))
-                throw new IllegalArgumentException();
+        // in partial mode, the resulting state might not be at the probe point.
+        if (!PARTIAL) {
+            if (timeForward) {
+                // the probe point should be the goal state
+                if (!x_rand.isEqual(x_gA, 0.001))
+                    throw new IllegalArgumentException();
+            } else {
+                // the probe point should be the initial state
+                if (!x_rand.isEqual(x_iA, 0.001))
+                    throw new IllegalArgumentException();
+            }
         }
 
         Node<N4> freeEndA = null;
@@ -156,11 +163,13 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                     LocalLink<N4> randLink = new LocalLink<>(source, target, tMaxA - tSoFar);
                     InsertNode(randLink, _T_a);
                 }
-                // at this point the "leaf" of A should be "goal" which is the probe point
-                if (!x_rand.isEqual(freeEndA.getState(), 0.001))
-                    throw new IllegalArgumentException();
-                if (!x_gA.isEqual(freeEndA.getState(), 0.001))
-                    throw new IllegalArgumentException();
+                if (!PARTIAL) {
+                    // at this point the "leaf" of A should be "goal" which is the probe point
+                    if (!x_rand.isEqual(freeEndA.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                    if (!x_gA.isEqual(freeEndA.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                }
             } else {
                 // time is reversed, so this is T_b, so walk the trajectory backwards
                 double tSoFar = 0;
@@ -184,11 +193,13 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                     LocalLink<N4> randLink = new LocalLink<>(source, target, tSoFar);
                     InsertNode(randLink, _T_a);
                 }
-                // in the reversed case, the "leaf" is the "initial" which is the probe point
-                if (!x_rand.isEqual(freeEndA.getState(), 0.001))
-                    throw new IllegalArgumentException();
-                if (!x_iA.isEqual(freeEndA.getState(), 0.001))
-                    throw new IllegalArgumentException();
+                if (!PARTIAL) {
+                    // in the reversed case, the "leaf" is the "initial" which is the probe point
+                    if (!x_rand.isEqual(freeEndA.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                    if (!x_iA.isEqual(freeEndA.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                }
             }
         }
 
@@ -212,14 +223,15 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                 return 1;
             }
 
+                            // for the second half of bidirectional don't allow partial solutions
             Trajectory phiB = null;
             if (timeForward) {
                 // we're looking in T_b which is later than T_a so the join is the initial
                 // state.
-                phiB = BangBangSteer(_model::clear, freeEndA.getState(), x_nearestB._nearest.getState());
+                phiB = BangBangSteer(_model::clear, freeEndA.getState(), x_nearestB._nearest.getState(), timeForward, false);
             } else {
                 // we're looking in T_a which is earlier than T_b so the join is the goal state
-                phiB = BangBangSteer(_model::clear, x_nearestB._nearest.getState(), freeEndA.getState());
+                phiB = BangBangSteer(_model::clear, x_nearestB._nearest.getState(), freeEndA.getState(), timeForward, false);
             }
             if (phiB == null) {
                 SwapTrees();
@@ -231,40 +243,43 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             final Matrix<N4, N1> x_g = new Matrix<>(Nat.N4(), Nat.N1(),
                     new double[] { phiB.x.g, phiB.x.gdot, phiB.y.g, phiB.y.gdot });
 
-            if (timeForward) {
-                // if we're looking in the "other" tree in time-forward mode the probe
-                // point is the initial state
-                if (!x_rand.isEqual(x_i, 0.001)) {
-                    System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
-                    throw new IllegalArgumentException();
-                }
-            } else {
-                // if we're looking in the "other" tree in the time-reversed mode then we're
-                // looking at T_a, so the probe is the goal point.
-                if (!x_rand.isEqual(x_g, 0.001)) {
-                    System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
-                    throw new IllegalArgumentException();
+            if (!PARTIAL) {
+                if (timeForward) {
+                    // if we're looking in the "other" tree in time-forward mode the probe
+                    // point is the initial state
+                    if (!x_rand.isEqual(x_i, 0.001)) {
+                        System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
+                        throw new IllegalArgumentException();
+                    }
+                } else {
+                    // if we're looking in the "other" tree in the time-reversed mode then we're
+                    // looking at T_a, so the probe is the goal point.
+                    if (!x_rand.isEqual(x_g, 0.001)) {
+                        System.out.printf("%s %s %s\n", x_rand, x_i, x_g);
+                        throw new IllegalArgumentException();
+                    }
                 }
             }
 
-            // the returned endpoint may not actually be the same as the desired endpoint:
+            // the returned endpoint may not actually be the same as the desired endpoint,
+            // which now means we should just not make the link, i think.
             if (timeForward) {
                 // the B tree really is the backwards one, so the leaf is the "initial" node of
                 // the trajectory
                 if (!x_i.isEqual(freeEndA.getState(), 0.001)) {
                     System.out.printf("%s %s %s\n", x_i, x_g, freeEndA.getState());
-                    throw new IllegalArgumentException();
-                    // SwapTrees();
-                    // return 1;
+                    // throw new IllegalArgumentException();
+                    SwapTrees();
+                    return 1;
                 }
             } else {
                 // the B tree is the forwards one, so the leaf is the "goal" node of the
                 // trajectory
                 if (!x_g.isEqual(freeEndA.getState(), 0.001)) {
                     System.out.printf("%s %s %s\n", x_i, x_g, freeEndA.getState());
-                    throw new IllegalArgumentException();
-                    // SwapTrees();
-                    // return 1;
+                    // throw new IllegalArgumentException();
+                    SwapTrees();
+                    return 1;
                 }
             }
 
@@ -298,12 +313,14 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                     LocalLink<N4> randLink = new LocalLink<>(source, target, tSoFar);
                     InsertNode(randLink, _T_b);
                 }
-                // in the forward case for the "other" tree the "leaf" is the "initial" which is
-                // the probe point
-                if (!x_rand.isEqual(freeEndB.getState(), 0.001))
-                    throw new IllegalArgumentException();
-                if (!x_i.isEqual(freeEndB.getState(), 0.001))
-                    throw new IllegalArgumentException();
+                if (!PARTIAL) {
+                    // in the forward case for the "other" tree the "leaf" is the "initial" which is
+                    // the probe point
+                    if (!x_rand.isEqual(freeEndB.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                    if (!x_i.isEqual(freeEndB.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                }
             } else {
                 double tSoFar = 0;
                 for (double tSec = tStep; tSec <= tMaxB; tSec += tStep) {
@@ -329,13 +346,14 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
                     LocalLink<N4> randLink = new LocalLink<>(source, target, tStep);
                     InsertNode(randLink, _T_b);
                 }
-                // in the reverse case for the "other" tree the "leaf" is the "goal" which is
-                // the probe point
-                if (!x_rand.isEqual(freeEndB.getState(), 0.001))
-                    throw new IllegalArgumentException();
-                if (!x_g.isEqual(freeEndB.getState(), 0.001))
-                    throw new IllegalArgumentException();
-
+                if (!PARTIAL) {
+                    // in the reverse case for the "other" tree the "leaf" is the "goal" which is
+                    // the probe point
+                    if (!x_rand.isEqual(freeEndB.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                    if (!x_g.isEqual(freeEndB.getState(), 0.001))
+                        throw new IllegalArgumentException();
+                }
             }
 
             // if we got here then we are finished constructing a path, and should stop
@@ -392,10 +410,13 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
         // try to get there
 
-        // always returns the given intial state; might return a different final state.
-        Trajectory phiA = BangBangSteer(_model::clear, state1, state2);
+        // always returns the given intial state.
+        // for optimization never allow partial solutions.
+        Trajectory phiA = BangBangSteer(_model::clear, state1, state2, true, false);
         if (phiA == null)
             return;
+
+        
 
         double tMaxA = Math.max(phiA.x.s1.t + phiA.x.s2.t, phiA.y.s1.t + phiA.y.s2.t);
 
@@ -412,6 +433,11 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
         // phiA.x.i, phiA.x.idot, phiA.y.i, phiA.y.idot });
         final Matrix<N4, N1> state_g = new Matrix<>(Nat.N4(), Nat.N1(),
                 new double[] { phiA.x.g, phiA.x.gdot, phiA.y.g, phiA.y.gdot });
+
+        if (!state_g.isEqual(state2, 0.001)) {
+            // didn't make it, so give up
+            return;
+        }
 
         double tSoFar = 0;
         // Matrix<N4,N1> state_interior = state_i;
@@ -536,7 +562,8 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
             }
         }
         if (tMin == Double.MAX_VALUE) {
-            if (DEBUG) System.out.println("no optimal time");
+            if (DEBUG)
+                System.out.println("no optimal time");
             return null;
         }
 
@@ -691,40 +718,111 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
 
     /**
      * The method of LaSalle et al [1] of "steering" is to follow the trajectory
-     * until it hits something, but doing that also implies redoing the trajectory
-     * with a resting state at the obstacle boundary, which results in lots of
-     * trajectories with weird corners at boundaries, which seems like a bad thing
-     * to encourage, even though they can be later optimized away.
+     * until it hits something. This results in a "doomed" trajectory that will
+     * never be picked up from the end, but the intermediate states are useful.
      * 
      * So instead i'll just check for collisions, return the trajectory if there
      * aren't any, and otherwise return null.
-     * 
-     * so we need a way to sample the trajectory.
-     * 
+     *
      * if time is reversed the caller should swap the arguments so that x_i is
      * temporally earlier.
      * 
      * @param free        predicate indicating collision-free
      * @param x_i         initial state, always earlier than the goal.
      * @param x_g         goal state
-     * @param timeForward swaps x_i and x_g if true.
-     * @return a feasible trajectory from initial to goal, or null if none is
-     *         feasible.
+     * @param timeForward find partial states in the correct direction using this
+     *                    parameter
+     * @param partialOK allow partial solutions
+     * @return a feasible trajectory that starts at x_i and ends somewhere on the
+     *         path to x_g, or null if no trajectory is
+     *         feasible at all.
      */
     static Trajectory BangBangSteer(
             Predicate<Matrix<N4, N1>> free,
             Matrix<N4, N1> x_i,
-            Matrix<N4, N1> x_g) {
+            Matrix<N4, N1> x_g,
+            boolean timeForward,
+            boolean partialOK) {
+        if (DEBUG)
+            System.out.printf("attempt %s %s\n", x_i, x_g);
         Trajectory trajectory = optimalTrajectory(x_i, x_g, MAX_U);
         if (trajectory == null)
             return null;
+        if (DEBUG)
+            System.out.printf("produced %s\n", trajectory);
         double tMax = Math.max(trajectory.x.s1.t + trajectory.x.s2.t, trajectory.y.s1.t + trajectory.y.s2.t);
         double tStep = 0.1;
-        for (double tSec = 0; tSec < tMax; tSec += tStep) {
-            Matrix<N4, N1> state = SampleTrajectory(trajectory, tSec);
-            if (!free.test(state))
-                return null;
+
+        if (timeForward) {
+            // walking forward in time is fine
+            Matrix<N4, N1> goodState = null;
+            for (double tSec = 0; tSec < tMax; tSec += tStep) {
+                Matrix<N4, N1> state = SampleTrajectory(trajectory, tSec);
+                if (DEBUG)
+                    System.out.printf("test state %s\n", state);
+                if (!free.test(state)) {
+                    if (DEBUG)
+                        System.out.printf("failed state %s %s\n", x_i, state);
+                    if (goodState == null)
+                        return null; // nothing feasible at all.
+                    // we want to return a partial trajectory here. maybe the optimal one will just
+                    // work.
+                    // hm, no, it seems to barely miss the goal and so it goes all the way around
+                    //
+                    if (!partialOK)
+                        return null;
+                    // try the same trajectory with a bit more U so we won't miss it.
+                    Trajectory partial = optimalTrajectory(x_i, goodState, MAX_U + 0.01);
+                    if (partial == null)
+                        return null;
+                    double tMax2 = Math.max(partial.x.s1.t + partial.x.s2.t, partial.y.s1.t + partial.y.s2.t);
+
+                    // verify it one more time
+                    for (double tSec2 = 0; tSec2 < tMax2; tSec2 += tStep) {
+                        state = SampleTrajectory(partial, tSec2);
+                        if (!free.test(state))
+                            return null;
+                    }
+
+                    if (DEBUG)
+                        System.out.printf("return forward partial %s %s %s\n", x_i, goodState, partial);
+                    return partial;
+                }
+                goodState = state;
+            }
+        } else {
+            // find partial solutions by walking backwards in time
+            Matrix<N4, N1> goodState = null;
+            for (double tSec = tMax; tSec >= 0; tSec -= tStep) {
+                Matrix<N4, N1> state = SampleTrajectory(trajectory, tSec);
+                if (!free.test(state)) {
+                    if (goodState == null)
+                        return null; // nothing feasible at all.
+                    // we want to return a partial trajectory here. maybe the optimal one will just
+                    // work.
+                    if (!partialOK)
+                        return null;
+
+                    Trajectory partial = optimalTrajectory(goodState, x_g, MAX_U + 0.01);
+
+                    if (partial == null)
+                        return null;
+                    double tMax2 = Math.max(partial.x.s1.t + partial.x.s2.t, partial.y.s1.t + partial.y.s2.t);
+
+                    // verify it one more time
+                    for (double tSec2 = tMax2; tSec2 >= 0; tSec2 -= tStep) {
+                        state = SampleTrajectory(partial, tSec2);
+                        if (!free.test(state))
+                            return null;
+                    }
+                    if (DEBUG) System.out.printf("return reverse partial %s %s\n", goodState, x_g);
+                    return partial;
+
+                }
+                goodState = state;
+            }
         }
+
         return trajectory;
     }
 
@@ -1039,6 +1137,9 @@ public class RRTStar7<T extends Arena<N4>> implements Solver<N4> {
      * returns null if failure.
      */
     static Trajectory optimalTrajectory(Matrix<N4, N1> x_i, Matrix<N4, N1> x_g, double umax) {
+        if (x_i.isEqual(x_g, 0.001)) {
+            return null;
+        }
         double tOptimal = tOptimal(x_i, x_g, umax);
         Trajectory result = new Trajectory();
         result.x = slowU(x_i.get(0, 0), x_i.get(1, 0), x_g.get(0, 0), x_g.get(1, 0), tOptimal);

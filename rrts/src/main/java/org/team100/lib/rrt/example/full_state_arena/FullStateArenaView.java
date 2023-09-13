@@ -65,19 +65,30 @@ public class FullStateArenaView extends JComponent {
     }
 
     public static void main(String[] args) throws InterruptedException, InvocationTargetException {
+        final JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.getContentPane().setLayout(new BorderLayout());
+        for (int i = 0; i < 100; ++i) {
+            frame.getContentPane().removeAll();
+            run(frame);
+            Thread.sleep(500);
+        }
+    }
+
+    public static void run(JFrame frame) throws InterruptedException, InvocationTargetException {
         final FullStateHolonomicArena arena = new FullStateHolonomicArena();
         KDNode<Node<N4>> T_a = new KDNode<>(new Node<>(arena.initial()));
         KDNode<Node<N4>> T_b = new KDNode<>(new Node<>(arena.goal()));
+        int seed = new Random().nextInt();
+        System.out.printf("seed %d\n", seed);
         final RRTStar7<FullStateHolonomicArena> solver = new RRTStar7<>(arena,
-                new Sample<>(arena, new Random().nextInt()), T_a, T_b);
-        solver.setRadius(5);
+                new Sample<>(arena, seed), T_a, T_b);
+        solver.setRadius(6);
         // solver.SwapTrees();
         final Runner<N4> runner = new Runner<>(solver);
         final FullStateArenaView view = new FullStateArenaView(arena, runner, T_a, T_b);
 
-        final JFrame frame = new JFrame();
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new BorderLayout());
+
         frame.getContentPane().add(view);
 
         SwingUtilities.invokeAndWait(new Runnable() {
@@ -90,8 +101,16 @@ public class FullStateArenaView extends JComponent {
         });
 
         // RRTStar7.DEBUG = true;
-        // runner.runForDurationMS(75);
-        runner.runSamples(100);
+        runner.runForDurationMS(100);
+        //runner.runSamples(100);
+        // solver.step();
+        // solver.step();
+        // RRTStar7.DEBUG = true;
+        // System.out.println("before");
+        // printTree(T_a.getValue(), 0);
+        // solver.step();
+        // System.out.println("after");
+        // printTree(T_a.getValue(), 0);
 
         SinglePath<N4> bestSinglePath = runner.getBestSinglePath();
         if (bestSinglePath == null) {

@@ -39,9 +39,9 @@ public class FullStateHolonomicArena implements Arena<N4> {
 
     // higher speed limit
     private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(),
-    new double[] { 0, -5, 0, -5 });
+    new double[] { 0, -4, 0, -4 });
     private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(),
-    new double[] { 16, 5, 8, 5 });
+    new double[] { 16, 4, 8, 4 });
 
     // used for steering
     // private final double _gamma;
