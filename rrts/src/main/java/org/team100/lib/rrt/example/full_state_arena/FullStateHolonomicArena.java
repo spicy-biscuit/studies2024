@@ -1,6 +1,9 @@
 package org.team100.lib.rrt.example.full_state_arena;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import org.team100.lib.example.Arena;
 import org.team100.lib.geom.Obstacle;
@@ -21,44 +24,73 @@ public class FullStateHolonomicArena implements Arena<N4> {
     private static final double ROBOT_RADIUS = .4;
     private static final double GOAL_RADIUS = 0.4;
 
-    // init and goal are motionless
-
+    // realistic initial and goal states
     private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 15.5, 0, 6.75, 0 });
     private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 1.93, 0, 2.748, 0 });
-    // private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 10, 0, 4, 0 });
-    // private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 6, 0, 2, 0 });
-   
-    private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 0, -3, 0, -3 });
-    private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 16, 3, 8, 3 });
+
+    // closer initial/goal for testing
+    // private static final Matrix<N4, N1> _init = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 10, 0, 4, 0 });
+    // private static final Matrix<N4, N1> _goal = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 6, 0, 2, 0 });
+
+    // conservative speed limit
+    // private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 0, -3, 0, -3 });
+    // private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(),
+    // new double[] { 16, 3, 8, 3 });
+
+    // higher speed limit
+    private static final Matrix<N4, N1> _min = new Matrix<>(Nat.N4(), Nat.N1(),
+            new double[] { 0, -4, 0, -4 });
+    private static final Matrix<N4, N1> _max = new Matrix<>(Nat.N4(), Nat.N1(),
+            new double[] { 16, 4, 8, 4 });
 
     // used for steering
     // private final double _gamma;
     // private int stepNo;
     private double radius;
 
-    Obstacle[] _obstacles = new Obstacle[] {
-            // see studies2023/glc
-            // nodes
-            new Polygon(Color.RED, 0, 0, 1.43, 0, 1.43, 5.49, 0, 5.49),
-            // community
-            new Polygon(Color.BLUE, 13.18, 0, 16, 0, 16, 5.49, 13.18, 5.49),
-            // opponents
-            new Polygon(Color.BLUE, 8, 4, 9, 4, 9, 5, 8, 5),
-            new Polygon(Color.BLUE, 10, 5, 11, 5, 11, 6, 10, 6),
-            new Polygon(Color.BLUE, 9, 6, 10, 6, 10, 7, 9, 7),
-            // alliance-mate
-            new Polygon(Color.RED, 6, 5, 7, 5, 7, 6, 6, 6),
-            new Polygon(Color.RED, 4, 5, 5, 5, 5, 6, 4, 6),
+    final List<Obstacle> _obstacles = new ArrayList<>();
 
-            // loading
-            new Polygon(Color.BLUE, 0, 8, 3.36, 8, 3.36, 5.49, 0, 5.49),
-            // charge stations
-            new Polygon(Color.RED, 2.98, 1.51, 4.91, 1.51, 4.91, 3.98, 2.98, 3.98),
-            new Polygon(Color.BLUE, 11.63, 1.51, 13.56, 1.51, 13.56, 3.98, 11.63, 3.98)
-    };
+    double dia = 0.5;
+
+    Random rand = new Random();
 
     public FullStateHolonomicArena() {
-        // _gamma = gamma;
+        this(0);
+    }
+
+    public FullStateHolonomicArena(int i) {
+        double t = 0.1*i;
+
+        // fixed obstacles
+        // nodes
+        _obstacles.add(new Polygon(Color.RED, 0, 0, 1.43, 0, 1.43, 5.49, 0, 5.49));
+        // community
+        _obstacles.add(new Polygon(Color.BLUE, 13.18, 0, 16, 0, 16, 5.49, 13.18, 5.49));
+        // opponents
+
+        // loading
+        _obstacles.add(new Polygon(Color.BLUE, 0, 8, 3.36, 8, 3.36, 5.49, 0, 5.49));
+        // charge stations
+        _obstacles.add(new Polygon(Color.RED, 2.98, 1.51, 4.91, 1.51, 4.91, 3.98, 2.98, 3.98));
+        _obstacles.add(new Polygon(Color.BLUE, 11.63, 1.51, 13.56, 1.51, 13.56, 3.98, 11.63, 3.98));
+
+        // moving obstacles
+        addBot(Color.BLUE, -4*Math.sin(t)+7.5, 3*Math.sin(t)+4);
+        addBot(Color.BLUE, -2*Math.sin(2*t+1)+6.5, Math.sin(2*t+1)+6);
+        addBot(Color.BLUE, 3*Math.sin(2*t)+9.5, Math.sin(0.5*t)+6.5);
+        // alliance-mate
+        addBot(Color.RED, 3*Math.sin(t+2)+6, Math.sin(Math.sqrt(3)*t+2)+5);
+        addBot(Color.RED, 4*Math.sin(3*t)+9, Math.sin(3*t)+6.5);
+    }
+
+    void addBot(Color color, double x, double y) {
+      //  x += 2 * rand.nextDouble() - 1.0;
+        //y += 2 * rand.nextDouble() - 1.0;
+        _obstacles.add(new Polygon(color, x - dia, y - dia, x + dia, y - dia, x + dia, y + dia, x - dia, y + dia));
+
     }
 
     @Override
@@ -98,7 +130,6 @@ public class FullStateHolonomicArena implements Arena<N4> {
 
     /**
      * config is (x xdot y ydot)
-     * so we check x and y only
      */
     @Override
     public boolean clear(Matrix<N4, N1> config) {
@@ -110,15 +141,23 @@ public class FullStateHolonomicArena implements Arena<N4> {
             return false;
         if (config.get(2, 0) + ROBOT_RADIUS > _max.get(2, 0))
             return false;
-            // poor-man's velocity limit.  TODO: add bang-cruise-bang solutions.
-        if (config.get(1, 0) < _min.get(1, 0))
+        // poor-man's velocity limit. TODO: add bang-cruise-bang solutions.
+        if (config.get(1, 0) < _min.get(1, 0)) {
+            // System.out.printf("%f %f\n", config.get(1, 0), _min.get(1, 0));
             return false;
-        if (config.get(3, 0) < _min.get(3, 0))
+        }
+        if (config.get(3, 0) < _min.get(3, 0)) {
+            // System.out.printf("%f %f\n", config.get(3, 0), _min.get(1, 0));
             return false;
-        if (config.get(1, 0) > _max.get(1, 0))
+        }
+        if (config.get(1, 0) > _max.get(1, 0)) {
+            // System.out.printf("%f %f\n", config.get(1, 0), _max.get(1, 0));
             return false;
-        if (config.get(3, 0) > _max.get(3, 0))
+        }
+        if (config.get(3, 0) > _max.get(3, 0)) {
+            // System.out.printf("%f %f\n", config.get(3, 0), _max.get(1, 0));
             return false;
+        }
 
         // robot-obstacle collision
         for (Obstacle obstacle : _obstacles) {
@@ -156,7 +195,7 @@ public class FullStateHolonomicArena implements Arena<N4> {
         return dist(conf, _goal) < GOAL_RADIUS;
     }
 
-    public Obstacle[] obstacles() {
+    public List<Obstacle> obstacles() {
         return _obstacles;
     }
 }

@@ -7,6 +7,43 @@ adding it to the tree, and then "rewiring" the tree to take
 advantage of any new shorter-than-before paths.  RRT* is
 "asymptotically optimal".
 
+## Bang-bang RRT
+
+<img src="bbrrt.png" width=800 />
+
+Minimum-time paths are always full-throttle; the general RRT idea
+is modified so that each path segment represents a pair of full-throttle
+moves (speeding up and slowing down) in each of the two dimensions, so
+the full model is four-dimensional (position and speed for x and y).
+
+The general approach is
+
+* sample the 4d space
+* find the nearest tree node to the sample
+* add a segment connecting the node to the sample, or as close as possible, e.g. in case of obstacles
+
+It's also bidirectional, so the tree grows from both initial and goal states, and
+there's a "shortcutting" step that attempts to replace random segments of the
+path with faster ones -- this is somewhat like the RRT* "rewiring" but not exactly,
+since it just operates on a single solution path.
+
+The key to this method is solving the 2-point boundary problem for each axis, using
+double-integrator dynamics (i.e. algebra with parabolas), and coordinating the two
+axes so that they arrive at their boundaries at the same time.
+
+The general approach takes after these papers:
+
+[LaSalle et al, Bang-Bang RRT, 2023](https://arxiv.org/pdf/2210.01744.pdf)
+and
+[Hauser et al, Optimal shortcuts, 2010](https://motion.cs.illinois.edu/papers/icra10-smoothing.pdf)
+
+To run this version, find ```FullStateArenaView.java``` and run the main method there.
+
+<hr>
+
+
+## Older material
+
 Below is an example of navigating the 2023 field; this is 100ms of
 work on my machine, which achieves about 6000 steps.
 

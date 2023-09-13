@@ -1,5 +1,9 @@
 package org.team100.lib.rrt.example.swingup;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.team100.lib.example.Arena;
 import org.team100.lib.geom.Obstacle;
 import org.team100.lib.graph.Node;
@@ -202,8 +206,8 @@ public class PendulumArena2 implements Arena<N2> {
         return true;
     }
 
-    public Obstacle[] obstacles() {
-        return _obstacles;
+    public List<Obstacle> obstacles() {
+        return Arrays.asList(_obstacles);
     }
 
 }

@@ -29,6 +29,7 @@ import org.team100.lib.graph.LinkInterface;
 import org.team100.lib.graph.Node;
 import org.team100.lib.index.KDNode;
 import org.team100.lib.planner.Runner;
+import org.team100.lib.random.MersenneTwister;
 import org.team100.lib.rrt.RRTStar7;
 import org.team100.lib.space.Path;
 import org.team100.lib.space.Sample;
@@ -64,19 +65,30 @@ public class FullStateArenaView extends JComponent {
     }
 
     public static void main(String[] args) throws InterruptedException, InvocationTargetException {
-        final FullStateHolonomicArena arena = new FullStateHolonomicArena();
+        final JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.getContentPane().setLayout(new BorderLayout());
+        for (int i = 0; i < 100; ++i) {
+            frame.getContentPane().removeAll();
+            run(i, frame);
+            Thread.sleep(250);
+        }
+    }
+
+    public static void run(int ii, JFrame frame) throws InterruptedException, InvocationTargetException {
+        final FullStateHolonomicArena arena = new FullStateHolonomicArena(ii);
         KDNode<Node<N4>> T_a = new KDNode<>(new Node<>(arena.initial()));
         KDNode<Node<N4>> T_b = new KDNode<>(new Node<>(arena.goal()));
+        int seed = new Random().nextInt();
+        System.out.printf("seed %d\n", seed);
         final RRTStar7<FullStateHolonomicArena> solver = new RRTStar7<>(arena,
-                new Sample<>(arena, new Random().nextInt()), T_a, T_b);
-        solver.setRadius(5);
+                new Sample<>(arena, seed), T_a, T_b);
+        solver.setRadius(6);
         // solver.SwapTrees();
         final Runner<N4> runner = new Runner<>(solver);
         final FullStateArenaView view = new FullStateArenaView(arena, runner, T_a, T_b);
 
-        final JFrame frame = new JFrame();
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new BorderLayout());
+
         frame.getContentPane().add(view);
 
         SwingUtilities.invokeAndWait(new Runnable() {
@@ -89,28 +101,39 @@ public class FullStateArenaView extends JComponent {
         });
 
         // RRTStar7.DEBUG = true;
-        runner.runForDurationMS(75);
+        runner.runForDurationMS(200);
         //runner.runSamples(100);
-
+        // solver.step();
+        // solver.step();
+        // RRTStar7.DEBUG = true;
+        // System.out.println("before");
+        // printTree(T_a.getValue(), 0);
+        // solver.step();
+        // System.out.println("after");
+        // printTree(T_a.getValue(), 0);
 
         SinglePath<N4> bestSinglePath = runner.getBestSinglePath();
         if (bestSinglePath == null) {
             System.out.println("failed to find path");
         } else {
             System.out.println("found path");
+            Random random = new MersenneTwister(new Random().nextInt());
 
-            pause(1000);
             // so now we should try to optimize it for awhile
-            // wow, a lot of iterations
-            for (int i = 0; i < 100000; ++i) {
-                //if (i % 100 == 0)                System.out.println(i);
-                //if (i % 100 == 0) pause(500);
-                solver.Optimize();
+            // not sure which of these methods is better.
+
+            // this just picks random points. random always finds everything there is to
+            // find, additional more-focused optimization runs don't fix anything, even when
+            // there are obvious corners.
+            for (int i = 0; i < 1000; ++i) {
+                double frac1 = random.nextDouble();
+                double frac2 = random.nextDouble(frac1, 1.0);
+                solver.Optimize(frac1, frac2);
             }
 
-            // System.out.println(bestPath);
+            System.out.printf("path distance %7.3f\n", runner.getBestSinglePath().getDistance());
+
         }
-        System.out.printf("final path distance %7.3f\n", runner.getBestSinglePath().getDistance());
         System.out.println("done");
 
         // view.printPaths(bestPath);
@@ -118,14 +141,6 @@ public class FullStateArenaView extends JComponent {
         frame.repaint();
         view.repaint();
 
-    }
-
-    static void pause(int ms) {
-        // try {
-        //     Thread.sleep(ms);
-        // } catch (InterruptedException e) {
-        //     e.printStackTrace();
-        // }
     }
 
     @Override
@@ -302,29 +317,29 @@ public class FullStateArenaView extends JComponent {
         List<SinglePath.Link<N4>> links = path.getLinks();
         if (links.size() > 1) {
             // first the line
-            
-                Iterator<SinglePath.Link<N4>> linkIter = links.iterator();
-                final int linkct = links.size();
-                int statei = 0;
-                while (linkIter.hasNext()) {
-                    // TODO: make this reflect cost
-                    g.setColor(new Color(1, (float) statei / linkct, (float) (1.0 - (float) statei / linkct)));
-                    SinglePath.Link<N4> link = linkIter.next();
-                    line.setLine(link.x_i.get(0, 0), link.x_i.get(2, 0), link.x_g.get(0, 0), link.x_g.get(2, 0));
-                    g.draw(line);
-                    ++statei;
-                }
-            
+
+            Iterator<SinglePath.Link<N4>> linkIter = links.iterator();
+            final int linkct = links.size();
+            int statei = 0;
+            while (linkIter.hasNext()) {
+                // TODO: make this reflect cost
+                g.setColor(new Color(1, (float) statei / linkct, (float) (1.0 - (float) statei / linkct)));
+                SinglePath.Link<N4> link = linkIter.next();
+                line.setLine(link.x_i.get(0, 0), link.x_i.get(2, 0), link.x_g.get(0, 0), link.x_g.get(2, 0));
+                g.draw(line);
+                ++statei;
+            }
+
             // then the dots
-            
-                double r = 0.02;
-                g.setColor(Color.BLACK);
-                 linkIter = links.iterator();
-                while (linkIter.hasNext()) {
-                    SinglePath.Link<N4> link = linkIter.next();
-                    g.fill(new Ellipse2D.Double(link.x_i.get(0, 0) - r, link.x_i.get(2, 0) - r, 2 * r, 2 * r));
-                }
-            
+
+            double r = 0.02;
+            g.setColor(Color.BLACK);
+            linkIter = links.iterator();
+            while (linkIter.hasNext()) {
+                SinglePath.Link<N4> link = linkIter.next();
+                g.fill(new Ellipse2D.Double(link.x_i.get(0, 0) - r, link.x_i.get(2, 0) - r, 2 * r, 2 * r));
+            }
+
         }
     }
 

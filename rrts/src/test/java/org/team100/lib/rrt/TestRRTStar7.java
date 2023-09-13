@@ -983,7 +983,7 @@ public class TestRRTStar7 {
         // y: (0,0) -> (1,0)
         Matrix<N4, N1> x_i = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 0, 0, 0, 0 });
         Matrix<N4, N1> x_g = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 1, 0, 1, 0 });
-        Trajectory phi = RRTStar7.BangBangSteer(free, x_i, x_g, true);
+        Trajectory phi = RRTStar7.BangBangSteer(free, x_i, x_g, true, false);
         assertEquals(0, phi.x.i, 0.001);
         assertEquals(0, phi.x.idot, 0.001);
         assertEquals(1, phi.x.g, 0.001);
@@ -1018,7 +1018,7 @@ public class TestRRTStar7 {
         // y: (0,0) -> (1,0)
         Matrix<N4, N1> x_i = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 0, 0, 0, 0 });
         Matrix<N4, N1> x_g = new Matrix<>(Nat.N4(), Nat.N1(), new double[] { 1, 0, 1, 0 });
-        Trajectory phi = RRTStar7.BangBangSteer(free, x_i, x_g, true);
+        Trajectory phi = RRTStar7.BangBangSteer(free, x_i, x_g, true, true);
         assertNull(phi);
     }
 

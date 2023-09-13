@@ -23,6 +23,11 @@ public class SinglePath<States extends Num> {
             this.x_g = x_g;
             this.cost = cost;
         }
+
+        @Override
+        public String toString() {
+            return "Link [x_i=" + x_i + ", x_g=" + x_g + ", cost=" + cost + "]";
+        }
     }
 
     private final List<Link<States>> links;
@@ -63,5 +68,10 @@ public class SinglePath<States extends Num> {
 
     public Link<States> getLastLink() {
         return links.get(links.size() - 1);
+    }
+
+    @Override
+    public String toString() {
+        return "SinglePath [links=" + links + "]";
     }
 }

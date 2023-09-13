@@ -84,7 +84,7 @@ public class Runner<States extends Num> {
                 }
                 // this is so i can see what it's doing
                 // try {
-                //     Thread.sleep(50);
+                //     Thread.sleep(1000);
                 // } catch (InterruptedException e) {
                 //     e.printStackTrace();
                 // }
