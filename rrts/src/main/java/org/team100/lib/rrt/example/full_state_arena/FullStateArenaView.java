@@ -70,13 +70,13 @@ public class FullStateArenaView extends JComponent {
         frame.getContentPane().setLayout(new BorderLayout());
         for (int i = 0; i < 100; ++i) {
             frame.getContentPane().removeAll();
-            run(frame);
-            Thread.sleep(500);
+            run(i, frame);
+            Thread.sleep(250);
         }
     }
 
-    public static void run(JFrame frame) throws InterruptedException, InvocationTargetException {
-        final FullStateHolonomicArena arena = new FullStateHolonomicArena();
+    public static void run(int ii, JFrame frame) throws InterruptedException, InvocationTargetException {
+        final FullStateHolonomicArena arena = new FullStateHolonomicArena(ii);
         KDNode<Node<N4>> T_a = new KDNode<>(new Node<>(arena.initial()));
         KDNode<Node<N4>> T_b = new KDNode<>(new Node<>(arena.goal()));
         int seed = new Random().nextInt();
@@ -101,7 +101,7 @@ public class FullStateArenaView extends JComponent {
         });
 
         // RRTStar7.DEBUG = true;
-        runner.runForDurationMS(100);
+        runner.runForDurationMS(200);
         //runner.runSamples(100);
         // solver.step();
         // solver.step();
@@ -125,7 +125,7 @@ public class FullStateArenaView extends JComponent {
             // this just picks random points. random always finds everything there is to
             // find, additional more-focused optimization runs don't fix anything, even when
             // there are obvious corners.
-            for (int i = 0; i < 100000; ++i) {
+            for (int i = 0; i < 1000; ++i) {
                 double frac1 = random.nextDouble();
                 double frac2 = random.nextDouble(frac1, 1.0);
                 solver.Optimize(frac1, frac2);
