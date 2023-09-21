@@ -1,97 +1,81 @@
 package frc.robot.subsystems;
 
-import java.time.OffsetDateTime;
-
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class LaundryArm extends Subsystem {
-    private ProfiledPIDController m_controller;
-    private CANSparkMax m_motor;
-    //private double kOffset;
-   // private double kLimit;
-    private double kGoal;
-    private boolean kInverted;
-    //private boolean zeroCalibrated = false;
-    //private boolean limitCalibrated = false;
-    private double m_output = 0;
-    private boolean m_enabled = false;
+    private static final int kGearRatio = 125;
+    private final ProfiledPIDController m_controller;
+    private final CANSparkMax m_motor;
 
-    public LaundryArm(ProfiledPIDController controller, CANSparkMax motor, boolean inverted) {
+    private final DoublePublisher goalPub;
+    private final DoublePublisher measurementPub;
+    private final DoublePublisher outputPub;
+
+    private double m_goalTurns;
+    private boolean m_enabled;
+
+    public LaundryArm(ProfiledPIDController controller, CANSparkMax motor) {
         m_controller = controller;
         m_motor = motor;
-        kInverted = inverted;
         m_motor.enableVoltageCompensation(12.0);
         m_motor.setSmartCurrentLimit(10);
         m_motor.setIdleMode(IdleMode.kCoast);
-    }
 
-    public void zeroSet() {
-        //kOffset = getAbsolute();
-        //zeroCalibrated = true;
-        m_motor.getEncoder().setPosition(0);
-    }
+        NetworkTableInstance inst = NetworkTableInstance.getDefault();
+        NetworkTable table = inst.getTable("arm");
+        goalPub = table.getDoubleTopic("goal").publish();
+        measurementPub = table.getDoubleTopic("measurement").publish();
+        outputPub = table.getDoubleTopic("output").publish();
 
-    public void limitSet() {
-       // kLimit = getAbsolute();
-        // limitCalibrated = true;
+        m_goalTurns = 0;
+        m_enabled = false;
     }
 
     public void enable() {
+        m_motor.getEncoder().setPosition(0);
         m_enabled = true;
     }
 
     public void disable() {
         m_enabled = false;
+        m_motor.set(0);
+        outputPub.set(0);
     }
 
-    public void setMotor() {
-        if (m_enabled) {
-            m_motor.set(m_output);
-            System.out.println("motor set");
-        }
-        else {
-            m_motor.set(0);
-            m_motor.setIdleMode(IdleMode.kCoast);
-            System.out.println("coast");
-        }
+    public void level() {
+        setGoalTurns(0);
     }
 
-    public void setOutput(double output) {
-        m_output = (kInverted ? -1 : 1) * output;
+    public void dump() {
+        setGoalTurns(-0.25);
     }
 
-    public double getAbsolute() {
+    public void setGoalTurns(double goalTurns) {
+        m_goalTurns = goalTurns;
+        goalPub.set(m_goalTurns);
+    }
+
+    public double getMeasurementTurns() {
         double absolute = m_motor.getEncoder().getPosition();
-        double ret = absolute / 125;
-        return (kInverted ? -1 : 1) * ret;
-    }
-
-    public double calculate(double goal) {
-        return (kInverted ? -1 : 1) * m_controller.calculate(getAbsolute(), goal);
-    }
-
-    public void setDegrees(double goal) {
-        kGoal = goal;
-    }
-
-    public void print() {
-        System.out.println("rotations:" + getAbsolute());
+        double turns = absolute / kGearRatio;
+        measurementPub.set(turns);
+        return turns;
     }
 
     @Override
     public void periodic() {
-        // if (zeroCalibrated && limitCalibrated) {
-        // System.out.println("goal: " + kGoal);
-        // System.out.println("rotations:" + getAbsolute());
-        setOutput(calculate(kGoal));
-        setMotor();
-        // } else {
-        // setOutput(0);
-        // }
+        double measurementTurns = getMeasurementTurns();
+        double output = m_controller.calculate(measurementTurns, m_goalTurns);
+        if (m_enabled) {
+            m_motor.set(output);
+            outputPub.set(output);
+        }
     }
 }
