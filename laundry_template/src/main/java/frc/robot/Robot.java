@@ -9,46 +9,53 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
+import frc.robot.control.LaundryStick;
 import frc.robot.subsystems.LaundryArm;
+import frc.robot.subsystems.LaundryDrive;
 
+/**
+ * An example of functional design: subsystems "pull" commands from suppliers.
+ * This is the reverse of the common imperative style, where commands are
+ * "pushed" to consumers.
+ */
 public class Robot extends TimedRobot {
-    private final Talon m_leftMotor = new Talon(0);
-    private final Talon m_rightMotor = new Talon(1);
-    private final CANSparkMax m_armMotor = new CANSparkMax(2, MotorType.kBrushless);
-    private final DifferentialDrive m_robotDrive = new DifferentialDrive(m_leftMotor, m_rightMotor);
-    private final Constraints m_constraints = new Constraints(50, 20);
-    private final ProfiledPIDController m_controller = new ProfiledPIDController(10, 0, 0, m_constraints);
-    private final LaundryArm m_arm = new LaundryArm(m_controller, m_armMotor);
-    private final Joystick m_stick = new Joystick(0);
+    private final LaundryStick m_stick;
+    private final LaundryDrive m_drive;
+    private final LaundryArm m_arm;
 
-    @Override
-    public void robotInit() {
+    public Robot() {
+        Joystick joystick = new Joystick(0);
+        m_stick = new LaundryStick(joystick);
+
+        Talon m_leftMotor = new Talon(0);
+        Talon m_rightMotor = new Talon(1);
         m_leftMotor.setInverted(true);
         m_rightMotor.setInverted(false);
+        DifferentialDrive m_robotDrive = new DifferentialDrive(m_leftMotor, m_rightMotor);
+        m_drive = new LaundryDrive(m_stick::xSpeed1_1, m_stick::zSpeed1_1, m_robotDrive);
+
+        CANSparkMax m_armMotor = new CANSparkMax(2, MotorType.kBrushless);
+        // these constraints are effectively infinite.
+        Constraints m_constraints = new Constraints(50, 20);
+        ProfiledPIDController m_controller = new ProfiledPIDController(10, 0, 0, m_constraints);
+        m_arm = new LaundryArm(m_stick::dump, m_controller, m_armMotor);
     }
 
     @Override
     public void teleopInit() {
+        m_drive.enable();
         m_arm.enable();
     }
 
     @Override
-    public void teleopPeriodic() {
-        m_robotDrive.arcadeDrive(-0.8 * m_stick.getY(), -0.65 * m_stick.getX(), false);
-        if (m_stick.getTrigger()) {
-            m_arm.dump();
-        } else {
-            m_arm.level();
-        }
-    }
-
-    @Override
     public void teleopExit() {
+        m_drive.disable();
         m_arm.disable();
     }
 
     @Override
     public void robotPeriodic() {
+        m_drive.periodic();
         m_arm.periodic();
     }
 }

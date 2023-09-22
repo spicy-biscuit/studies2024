@@ -8,6 +8,9 @@
     "transitory": {
       "arm": {
         "open": true
+      },
+      "drive": {
+        "open": true
       }
     }
   }
