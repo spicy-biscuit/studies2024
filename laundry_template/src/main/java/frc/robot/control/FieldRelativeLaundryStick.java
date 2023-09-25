@@ -2,11 +2,11 @@ package frc.robot.control;
 
 import edu.wpi.first.wpilibj.Joystick;
 
-public class LaundryStick {
+public class FieldRelativeLaundryStick {
 
     private final Joystick m_stick;
 
-    public LaundryStick(Joystick stick) {
+    public FieldRelativeLaundryStick(Joystick stick) {
         m_stick = stick;
     }
 
@@ -19,8 +19,9 @@ public class LaundryStick {
         return -0.8 * m_stick.getY();
     }
 
-    // TODO: change this to radians/sec
-    public double zSpeed1_1() {
+    // TODO: change this to meters/sec
+    public double ySpeed1_1() {
         return -0.65 * m_stick.getX();
     }
+    
 }
