@@ -128,13 +128,15 @@ public class LSM6DSOX_I2C {
      */
     private static final byte LSM6DSOX_I2C_ADD_L = (byte) 0xD5;
     /**
-     * Control register.
+     * Control register for scale and rate. See datasheet section 9.16.
      */
     private static final byte LSM6DSOX_CTRL2_G = (byte) 0x11;
+
     /**
-     * Output register.
+     * Output register, little-endian, 16b.  See datasheet section 9.33.
      */
     private static final byte LSM6DSOX_OUTZ_L_G = (byte) 0x26;
+
     /**
      * Static offset.
      * TODO: capture offset at startup, when motionless.
