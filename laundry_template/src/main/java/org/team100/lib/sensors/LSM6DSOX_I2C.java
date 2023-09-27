@@ -11,16 +11,15 @@ import edu.wpi.first.wpilibj.I2C;
 /**
  * Adafruit 4517 contains this gyro, interfaced with I2C.
  * 
- * It uses NWU coordinates, clockwise-negative, like most of WPILIB.
+ * (It is also possible to use SPI with this device but this class supports only I2C.)
  * 
- * Constant names come from the ST official library at
- * https://github.com/stm32duino/LSM6DSOX/lsm6dsox_reg.h
+ * It uses NWU coordinates, clockwise-negative, like most of WPILIB.
  * 
  * Full datasheet is at https://www.st.com/resource/en/datasheet/lsm6dsox.pdf
  */
 public class LSM6DSOX_I2C {
     /**
-     * Output Data Rate (ODR).
+     * Gyro output Data Rate (ODR).
      * 
      * The output rate affects the response of the sensor, see Table 18.
      * We are effectively sampling the output at 50Hz, so to avoid aliasing
@@ -31,18 +30,18 @@ public class LSM6DSOX_I2C {
      * 
      * This list duplicates Table 55.
      */
-    public enum LSM6DSOX_ODR_G_T {
-        LSM6DSOX_GY_ODR_OFF(0b0000_0000),
-        LSM6DSOX_GY_ODR_12Hz5(0b0001_0000),
-        LSM6DSOX_GY_ODR_26Hz(0b0010_0000),
-        LSM6DSOX_GY_ODR_52Hz(0b0011_0000),
-        LSM6DSOX_GY_ODR_104Hz(0b0100_0000),
-        LSM6DSOX_GY_ODR_208Hz(0b0101_0000),
-        LSM6DSOX_GY_ODR_417Hz(0b0110_0000),
-        LSM6DSOX_GY_ODR_833Hz(0b0111_0000),
-        LSM6DSOX_GY_ODR_1667Hz(0b1000_0000),
-        LSM6DSOX_GY_ODR_3333Hz(0b1001_0000),
-        LSM6DSOX_GY_ODR_6667Hz(0b1010_0000);
+    public enum ODR_G {
+        ODR_OFF(0b0000_0000),
+        ODR_12Hz5(0b0001_0000),
+        ODR_26Hz(0b0010_0000),
+        ODR_52Hz(0b0011_0000),
+        ODR_104Hz(0b0100_0000),
+        ODR_208Hz(0b0101_0000),
+        ODR_417Hz(0b0110_0000),
+        ODR_833Hz(0b0111_0000),
+        ODR_1667Hz(0b1000_0000),
+        ODR_3333Hz(0b1001_0000),
+        ODR_6667Hz(0b1010_0000);
 
         /**
          * Mask to erase the relevant bits.
@@ -54,7 +53,7 @@ public class LSM6DSOX_I2C {
          */
         private final byte value;
 
-        private LSM6DSOX_ODR_G_T(int value) {
+        private ODR_G(int value) {
             this.value = (byte) value;
         }
 
@@ -64,16 +63,16 @@ public class LSM6DSOX_I2C {
         private void set(I2C m_i2c) {
             ByteBuffer buf = ByteBuffer.allocate(1);
             buf.order(ByteOrder.LITTLE_ENDIAN);
-            m_i2c.read(LSM6DSOX_CTRL2_G, 1, buf);
+            m_i2c.read(CTRL2_G, 1, buf);
             byte ctrl2 = buf.get();
-            ctrl2 &= ~LSM6DSOX_ODR_G_T.kMask;
+            ctrl2 &= ~ODR_G.kMask;
             ctrl2 |= value;
-            m_i2c.write(LSM6DSOX_CTRL2_G, ctrl2);
+            m_i2c.write(CTRL2_G, ctrl2);
         }
     }
 
     /**
-     * Sensitivity.
+     * Gyro sensitivity.
      * 
      * This represents the "full-scale" output of the gyro in degrees per second.
      * The choice of full-scale also affects the discretization error, but it's
@@ -84,12 +83,12 @@ public class LSM6DSOX_I2C {
      * 
      * This list duplicates Table 54.
      */
-    public enum LSM6DSOX_FS_G_T {
-        LSM6DSOX_125dps(0b0000_0010, 4.375),
-        LSM6DSOX_250dps(0b0000_0000, 8.75),
-        LSM6DSOX_500dps(0b0000_0100, 17.5),
-        LSM6DSOX_1000dps(0b0000_1000, 35),
-        LSM6DSOX_2000dps(0b0000_1100, 70);
+    public enum FS_G {
+        FS_125dps(0b0000_0010, 4.375),
+        FS_250dps(0b0000_0000, 8.75),
+        FS_500dps(0b0000_0100, 17.5),
+        FS_1000dps(0b0000_1000, 35),
+        FS_2000dps(0b0000_1100, 70);
 
         /**
          * Register value.
@@ -104,7 +103,7 @@ public class LSM6DSOX_I2C {
          */
         private static final byte mask = (byte) 0b0000_1110;
 
-        private LSM6DSOX_FS_G_T(int value, double mdps) {
+        private FS_G(int value, double mdps) {
             this.value = (byte) value;
             this.mdps = mdps;
         }
@@ -115,26 +114,28 @@ public class LSM6DSOX_I2C {
         private void set(I2C m_i2c) {
             ByteBuffer buf = ByteBuffer.allocate(1);
             buf.order(ByteOrder.LITTLE_ENDIAN);
-            m_i2c.read(LSM6DSOX_CTRL2_G, 1, buf);
+            m_i2c.read(CTRL2_G, 1, buf);
             byte ctrl2 = buf.get();
-            ctrl2 &= ~LSM6DSOX_FS_G_T.mask;
+            ctrl2 &= ~FS_G.mask;
             ctrl2 |= value;
-            m_i2c.write(LSM6DSOX_CTRL2_G, ctrl2);
+            m_i2c.write(CTRL2_G, ctrl2);
         }
     }
 
     /**
      * I2C address. 8-bit addr is 0xd5, so 7-bit is shifted, 0x6A
      */
-    private static final byte LSM6DSOX_I2C_ADD_L = (byte) 0xD5;
+    private static final byte ADDR = (byte) 0xD5;
     /**
-     * Control register.
+     * Control register for scale and rate. See datasheet section 9.16.
      */
-    private static final byte LSM6DSOX_CTRL2_G = (byte) 0x11;
+    private static final byte CTRL2_G = (byte) 0x11;
+
     /**
-     * Output register.
+     * Output register, little-endian, 16b.  See datasheet section 9.33.
      */
-    private static final byte LSM6DSOX_OUTZ_L_G = (byte) 0x26;
+    private static final byte OUTZ_L_G = (byte) 0x26;
+
     /**
      * Static offset.
      * TODO: capture offset at startup, when motionless.
@@ -142,7 +143,7 @@ public class LSM6DSOX_I2C {
     private static final int kRawOffset = -50;
 
     private final I2C m_i2c;
-    private final LSM6DSOX_FS_G_T m_scale;
+    private final FS_G m_scale;
     private final DoublePublisher measurementPub;
     private final DoublePublisher measurementRawPub;
 
@@ -150,9 +151,9 @@ public class LSM6DSOX_I2C {
      * Construct the gyro with sensitivity of 500 degrees/sec and 52 Hz data rate.
      */
     public LSM6DSOX_I2C() {
-        this(LSM6DSOX_I2C_ADD_L,
-                LSM6DSOX_ODR_G_T.LSM6DSOX_GY_ODR_52Hz,
-                LSM6DSOX_FS_G_T.LSM6DSOX_500dps);
+        this(ADDR,
+                ODR_G.ODR_52Hz,
+                FS_G.FS_500dps);
     }
 
     /**
@@ -170,8 +171,8 @@ public class LSM6DSOX_I2C {
 
     private LSM6DSOX_I2C(
             byte i2cAddress,
-            LSM6DSOX_ODR_G_T odr,
-            LSM6DSOX_FS_G_T fs) {
+            ODR_G odr,
+            FS_G fs) {
         m_i2c = new I2C(I2C.Port.kMXP, i2cAddress >>> 1);
         odr.set(m_i2c);
         m_scale = fs;
@@ -189,7 +190,7 @@ public class LSM6DSOX_I2C {
     private int getYawRateRaw() {
         ByteBuffer buf = ByteBuffer.allocate(2);
         buf.order(ByteOrder.LITTLE_ENDIAN);
-        m_i2c.read(LSM6DSOX_OUTZ_L_G, 2, buf);
+        m_i2c.read(OUTZ_L_G, 2, buf);
         return buf.getShort() - kRawOffset;
     }
 }

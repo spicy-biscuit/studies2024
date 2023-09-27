@@ -24,8 +24,10 @@ import edu.wpi.first.wpilibj.simulation.EncoderSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Subsystem;
+import frc.robot.GyroIntegrator;
 
 public class DriveSubsystem extends Subsystem {
+    private static final boolean USE_INTEGRATOR = true;
     private static final double ksVolts = 0.2;
     private static final double kvVoltSecondsPerMeter = 4;
     private static final double kaVoltSecondsSquaredPerMeter = 0.5;
@@ -47,6 +49,7 @@ public class DriveSubsystem extends Subsystem {
     private final Encoder m_leftEncoder;
     private final Encoder m_rightEncoder;
     private final ADXRS450_Gyro m_gyro;
+    private final GyroIntegrator m_gyroIntegrator;
     private final DifferentialDriveOdometry m_odometry;
     private final EncoderSim m_leftEncoderSim;
     private final EncoderSim m_rightEncoderSim;
@@ -61,6 +64,7 @@ public class DriveSubsystem extends Subsystem {
         m_leftEncoder = new Encoder(0, 1, false);
         m_rightEncoder = new Encoder(2, 3, true);
         m_gyro = new ADXRS450_Gyro();
+        m_gyroIntegrator = new GyroIntegrator();
         m_rightMotors.setInverted(true);
         final int kEncoderCPR = 1024;
         final double kEncoderDistancePerPulse = (kWheelDiameterMeters * Math.PI) / kEncoderCPR;
@@ -109,6 +113,7 @@ public class DriveSubsystem extends Subsystem {
                 Rotation2d.fromDegrees(getHeading()),
                 m_leftEncoder.getDistance(),
                 m_rightEncoder.getDistance());
+        m_gyroIntegrator.addRateNWU(-m_gyro.getRate(), 0.020);
         m_fieldSim.setRobotPose(getPose());
     }
 
@@ -122,13 +127,18 @@ public class DriveSubsystem extends Subsystem {
         m_drivetrainSimulator.setInputs(
                 m_leftMotors.get() * RobotController.getBatteryVoltage(),
                 m_rightMotors.get() * RobotController.getBatteryVoltage());
+        Rotation2d oldHeading = m_drivetrainSimulator.getHeading();
         m_drivetrainSimulator.update(0.020);
+        Rotation2d newHeading = m_drivetrainSimulator.getHeading();
+        Rotation2d diffHeading = newHeading.minus(oldHeading);
+        double omega = diffHeading.getDegrees() / 0.020;
 
         m_leftEncoderSim.setDistance(m_drivetrainSimulator.getLeftPositionMeters());
         m_leftEncoderSim.setRate(m_drivetrainSimulator.getLeftVelocityMetersPerSecond());
         m_rightEncoderSim.setDistance(m_drivetrainSimulator.getRightPositionMeters());
         m_rightEncoderSim.setRate(m_drivetrainSimulator.getRightVelocityMetersPerSecond());
         m_gyroSim.setAngle(-m_drivetrainSimulator.getHeading().getDegrees());
+        m_gyroSim.setRate(-omega);
     }
 
     /**
@@ -217,6 +227,7 @@ public class DriveSubsystem extends Subsystem {
     /** Zeroes the heading of the robot. */
     public void zeroHeading() {
         m_gyro.reset();
+        m_gyroIntegrator.reset();
     }
 
     /**
@@ -225,6 +236,8 @@ public class DriveSubsystem extends Subsystem {
      * @return the robot's heading in degrees, from -180 to 180
      */
     public double getHeading() {
+        if (USE_INTEGRATOR)
+            return m_gyroIntegrator.getHeadingNWU();
         return Math.IEEEremainder(m_gyro.getAngle(), 360) * -1.0;
     }
 }

@@ -1,5 +1,6 @@
 package frc.robot;
 
+import org.team100.lib.sensors.AHRS;
 import org.team100.lib.sensors.LSM6DSOX_I2C;
 
 import com.revrobotics.CANSparkMax;
@@ -12,8 +13,10 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
-import frc.robot.control.LaundryStick;
+import frc.robot.control.FieldRelativeLaundryStick;
+import frc.robot.control.RobotRelativeLaundryStick;
 import frc.robot.subsystems.DirectLaundryDrive;
+import frc.robot.subsystems.FieldRelativeLaundryDrive;
 import frc.robot.subsystems.LaundryArm;
 import frc.robot.subsystems.LaundryDrive;
 import frc.robot.subsystems.StabilizedLaundryDrive;
@@ -24,16 +27,15 @@ import frc.robot.subsystems.StabilizedLaundryDrive;
  * "pushed" to consumers.
  */
 public class Robot extends TimedRobot {
+    /** To try field-relative control. */
+    private static final boolean kFieldRelative = false;
     /** To try yaw stabilization, make this true. */
     private static final boolean kStabilize = false;
 
-    private final LaundryStick m_stick;
     private final LaundryDrive m_drive;
     private final LaundryArm m_arm;
 
     public Robot() {
-        Joystick joystick = new Joystick(0);
-        m_stick = new LaundryStick(joystick);
 
         Talon leftMotor = new Talon(0);
         Talon rightMotor = new Talon(1);
@@ -41,32 +43,64 @@ public class Robot extends TimedRobot {
         rightMotor.setInverted(false);
         DifferentialDrive drive = new DifferentialDrive(leftMotor, rightMotor);
 
-        if (kStabilize) {
+        if (kFieldRelative) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
+            AHRS ahrs = new AHRS(gyro);
+            Joystick joystick = new Joystick(0);
+            FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
+            m_drive = new FieldRelativeLaundryDrive(
+                    ahrs,
+                    stick::xSpeed1_1,
+                    stick::ySpeed1_1,
+                    drive);
+            CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
+            ProfiledPIDController armController = new ProfiledPIDController(
+                    10, // P
+                    0, // I
+                    0, // D
+                    new Constraints(
+                            50, // max velocity (infinite)
+                            20)); // max accel (infinite)
+            m_arm = new LaundryArm(stick::dump, armController, armMotor);
+        } else if (kStabilize) {
+            LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
+            Joystick joystick = new Joystick(0);
+            RobotRelativeLaundryStick stick = new RobotRelativeLaundryStick(joystick);
             // TODO: tune yaw stabilizer PID
             PIDController yawController = new PIDController(1, 0, 0);
             m_drive = new StabilizedLaundryDrive(
                     gyro,
-                    m_stick::xSpeed1_1,
-                    m_stick::zSpeed1_1,
+                    stick::xSpeed1_1,
+                    stick::zSpeed1_1,
                     yawController,
                     drive);
+            CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
+            ProfiledPIDController armController = new ProfiledPIDController(
+                    10, // P
+                    0, // I
+                    0, // D
+                    new Constraints(
+                            50, // max velocity (infinite)
+                            20)); // max accel (infinite)
+            m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else {
+            Joystick joystick = new Joystick(0);
+            RobotRelativeLaundryStick stick = new RobotRelativeLaundryStick(joystick);
             m_drive = new DirectLaundryDrive(
-                    m_stick::xSpeed1_1,
-                    m_stick::zSpeed1_1,
+                    stick::xSpeed1_1,
+                    stick::zSpeed1_1,
                     drive);
 
+            CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
+            ProfiledPIDController armController = new ProfiledPIDController(
+                    10, // P
+                    0, // I
+                    0, // D
+                    new Constraints(
+                            50, // max velocity (infinite)
+                            20)); // max accel (infinite)
+            m_arm = new LaundryArm(stick::dump, armController, armMotor);
         }
-        CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
-        ProfiledPIDController armController = new ProfiledPIDController(
-                10, // P
-                0, // I
-                0, // D
-                new Constraints(
-                        50, // max velocity (infinite)
-                        20)); // max accel (infinite)
-        m_arm = new LaundryArm(m_stick::dump, armController, armMotor);
     }
 
     @Override
