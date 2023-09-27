@@ -1,5 +1,6 @@
 package frc.robot;
 
+import org.team100.lib.sensors.AHRS;
 import org.team100.lib.sensors.LSM6DSOX_I2C;
 
 import com.revrobotics.CANSparkMax;
@@ -44,9 +45,11 @@ public class Robot extends TimedRobot {
 
         if (kFieldRelative) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
+            AHRS ahrs = new AHRS(gyro);
             Joystick joystick = new Joystick(0);
             FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
-            m_drive = new DirectLaundryDrive(
+            m_drive = new FieldRelativeLaundryDrive(
+                    ahrs,
                     stick::xSpeed1_1,
                     stick::ySpeed1_1,
                     drive);
