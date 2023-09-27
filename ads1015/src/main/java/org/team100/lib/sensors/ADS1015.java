@@ -2,7 +2,6 @@ package org.team100.lib.sensors;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.concurrent.TimeoutException;
 
 import edu.wpi.first.wpilibj.I2C;
 
@@ -14,16 +13,134 @@ import edu.wpi.first.wpilibj.I2C;
  * https://github.com/sparkfun/SparkFun_ADS1015_Arduino_Library
  * https://github.com/adafruit/Adafruit_ADS1X15
  * 
- * See datasheet: https://www.ti.com/lit/ds/symlink/ads1015.pdf
+ * See datasheet:
+ * 
+ * https://www.ti.com/lit/ds/symlink/ads1015.pdf
  * 
  * Notable from the datasheet: ADS1015 is incapable of clock stretching (section
- * 9.1.1).
+ * 9.1.1), so maybe it will work fine on the MXP I2C port?
  * 
  * The ADS1015 contains a single ADC and a 4-way mux, so reading involves
  * configuring the mux, starting the measurement, waiting for completion, and
  * then reading the result.
  */
 public class ADS1015 {
+    /**
+     * Input multiplexer configuration.
+     * See Table 6, bits 14:12.
+     */
+    public enum MUX {
+        SINGLE_0(0b0100_0000_0000_0000),
+        SINGLE_1(0b0101_0000_0000_0000),
+        SINGLE_2(0b0110_0000_0000_0000),
+        SINGLE_3(0b0111_0000_0000_0000);
+
+        private static final MUX[] values = new MUX[] {
+                SINGLE_0,
+                SINGLE_1,
+                SINGLE_2,
+                SINGLE_3
+        };
+        private final short value;
+
+        private MUX(int value) {
+            this.value = (short) value;
+        }
+
+        public static MUX get(int channel) {
+            return values[channel];
+        }
+    }
+
+    /**
+     * Programmable gain amplifier configuration.
+     * See Table 6, bits 11:9.
+     */
+    public enum PGA {
+        FSR_6_144V(0b0000_0000_0000_0000, 6.144),
+        FSR_4_096V(0b0000_0010_0000_0000, 4.096),
+        FSR_2_048V(0b0000_0100_0000_0000, 2.048),
+        FSR_1_024V(0b0000_0110_0000_0000, 1.024),
+        FSR_0_512V(0b0000_1000_0000_0000, 0.512),
+        FSR_0_256V(0b0000_1010_0000_0000, 0.256);
+
+        private final short value;
+        private final double halfRange;
+
+        private PGA(int value, double halfRange) {
+            this.value = (short) value;
+            this.halfRange = halfRange;
+        }
+    }
+
+    /**
+     * Device operating mode.
+     * See Table 6, bit 8.
+     */
+    public enum MODE {
+        CONTINUOUS(0b0000_0000_0000_0000),
+        SINGLE(0b0000_0001_0000_0000);
+
+        private final short value;
+
+        private MODE(int value) {
+            this.value = (short) value;
+        }
+    }
+
+    /**
+     * Data rate.
+     * See Table 6, bits 7:5
+     */
+    public enum DR {
+        SPS_128(0b0000_0000_0000_0000, 128),
+        SPS_250(0b0000_0000_0010_0000, 250),
+        SPS_490(0b0000_0000_0100_0000, 490),
+        SPS_920(0b0000_0000_0110_0000, 920),
+        SPS_1600(0b0000_0000_1000_0000, 1600),
+        SPS_2400(0b0000_0000_1010_0000, 2400),
+        SPS_3300(0b0000_0000_1100_0000, 3300);
+
+        private final short value;
+        private final int sps;
+
+        private DR(int value, int sps) {
+            this.value = (short) value;
+            this.sps = sps;
+        }
+    }
+
+    /**
+     * Operational status.
+     * See Table 6, bit 15, when writing.
+     */
+    public enum OS_W {
+        NOP(0b0000_0000_0000_0000),
+        START(0b1000_0000_0000_0000);
+
+        private final short value;
+
+        private OS_W(int value) {
+            this.value = (short) value;
+        }
+    }
+
+    /**
+     * Start a single conversion.
+     * See Table 6, bit 15, when reading.
+     */
+    public enum OS_R {
+        BUSY(0b0000_0000_0000_0000),
+        NOT_BUSY(0b1000_0000_0000_0000);
+
+        private final short value;
+        private static final short mask = (short) 0b1000_0000_0000_0000;
+
+        private OS_R(int value) {
+            this.value = (short) value;
+        }
+    }
+
     /**
      * I2C address. 7-bit addr is 0x48, 8-bit addr is 0x91
      */
@@ -36,74 +153,80 @@ public class ADS1015 {
      * Config register. See datasheet 8.6.3.
      */
     private static final byte CFG_REG = (byte) 0x01;
-    private static final short ADS1X15_REG_CONFIG_MODE_SINGLE = (short) 0x0100;
-    private static final short ADS1X15_REG_CONFIG_OS_SINGLE = (short) 0x8000;
-    // TODO: add the rest in an enum
-    private static final short RATE_ADS1015_1600SPS = (short) 0x0080;
-    // TODO: add the rest in an enum
-    private static final short ADS1X15_REG_CONFIG_PGA_6_144V = (short) 0x0000;
-    // TODO: make this an enum
-    private static final short ADS1X15_REG_CONFIG_MUX_SINGLE_0 = (short) 0x4000;
-    private static final short ADS1X15_REG_CONFIG_MUX_SINGLE_1 = (short) 0x5000;
-    private static final short ADS1X15_REG_CONFIG_MUX_SINGLE_2 = (short) 0x6000;
-    private static final short ADS1X15_REG_CONFIG_MUX_SINGLE_3 = (short) 0x7000;
-    private static final short[] MUX_BY_CHANNEL = {
-            ADS1X15_REG_CONFIG_MUX_SINGLE_0, /// < Single-ended AIN0
-            ADS1X15_REG_CONFIG_MUX_SINGLE_1, /// < Single-ended AIN1
-            ADS1X15_REG_CONFIG_MUX_SINGLE_2, /// < Single-ended AIN2
-            ADS1X15_REG_CONFIG_MUX_SINGLE_3 /// < Single-ended AIN3
-    };
+
     private final I2C m_i2c;
-    private final short m_dataRate;
-    private final short m_gain;
+    private final PGA m_pga;
+    private final DR m_dr;
 
+    /**
+     * Appropriate for measuring 3.3v signals as slowly and accurately as possible.
+     */
     public ADS1015() {
-        this(ADDR);
+        this(ADDR, PGA.FSR_4_096V, DR.SPS_128);
     }
 
-    private ADS1015(byte i2cAddress) {
+    private ADS1015(byte i2cAddress, PGA pga, DR dr) {
         m_i2c = new I2C(I2C.Port.kMXP, i2cAddress >>> 1);
-        m_dataRate = RATE_ADS1015_1600SPS;
-        m_gain = ADS1X15_REG_CONFIG_PGA_6_144V;
+        m_pga = pga;
+        m_dr = dr;
     }
 
-    public int read(int channel) throws TimeoutException, InterruptedException {
+    /**
+     * Read the voltage on the specified channel.
+     * 
+     * The full-scale is double-ended (plus and minus) so the single-ended
+     * GND-referenced reading will use half of the 12-bit range.
+     * 
+     * Returns zero if something goes wrong (e.g. device not connected or takes
+     * too long).
+     * 
+     * See Section 9.1.2 and Section 8.3.3.
+     */
+    public double readVolts(int channel) {
+        return readRaw(channel) * m_pga.halfRange / 2048;
+    }
+
+    /**
+     * Read the raw 12-bit ADC value for the specified channel.
+     * 
+     * Returns zero if something goes wrong (e.g. device not connected or takes too
+     * long).
+     */
+    public short readRaw(int channel) {
         if (channel > 3)
             throw new IllegalArgumentException(String.format("Illegal channel: %d", channel));
-        startADCReading(MUX_BY_CHANNEL[channel]);
-        // wait for the ADC to finish reading; timeout after awhile.
-        // default "data rate" is 1600 samples per sec so wait about 1ms.
+        startADCReading(MUX.get(channel));
+        // Wait for the ADC to finish reading.
+        // Try a few times (e.g. to recover from i2c bus collisions).
         int maxBusy = 5;
         do {
-            Thread.sleep(1);
+            try {
+                // Single-shot power-up takes 25us. See Section 8.4.2.1.
+                Thread.sleep(0, 25000);
+                // Conversion time is the inverse of the data rate. See Section 8.3.6.
+                Thread.sleep(1000 / m_dr.sps, 1000000000 / m_dr.sps % 1000000);
+            } catch (InterruptedException e) {
+                // keep trying
+            }
             maxBusy -= 1;
             if (maxBusy < 0) {
-                throw new TimeoutException();
+                return 0;
             }
         } while (busy());
 
         return getLastConversionResult();
-
     }
 
-    /** Start a single-shot measurement and return immediately. */
-    private void startADCReading(short mux) {
+    /**
+     * Start a single-shot measurement and return immediately.
+     */
+    private void startADCReading(MUX mux) {
         short config = 0;
-
-        config |= ADS1X15_REG_CONFIG_MODE_SINGLE;
-
-        // Set PGA/voltage range
-        config |= m_gain;
-
-        // Set data rate
-        config |= m_dataRate;
-
-        // Set channels
-        config |= mux;
-
-        // Set 'start single-conversion' bit
-        config |= ADS1X15_REG_CONFIG_OS_SINGLE;
-
+        config |= OS_W.START.value;
+        config |= mux.value;
+        config |= m_pga.value;
+        config |= MODE.SINGLE.value;
+        config |= m_dr.value;
         writeRegister(CFG_REG, config);
     }
 
@@ -112,7 +235,7 @@ public class ADS1015 {
      * doing a measurement.
      */
     private boolean busy() {
-        return (readRegister(CFG_REG) & 0x8000) == 0;
+        return (readRegister(CFG_REG) & OS_R.mask) == OS_R.BUSY.value;
     }
 
     /**
@@ -120,11 +243,14 @@ public class ADS1015 {
      * 
      * The ADS1015 reads 12 bits into 16 left justified, so this shifts right by 4.
      */
-    private int getLastConversionResult() {
-        return readRegister(CONV_REG) >>> 4;
+    private short getLastConversionResult() {
+        return (short) (readRegister(CONV_REG) >>> 4);
     }
 
-    private int readRegister(byte register) {
+    /**
+     * Read two bytes from the specified register.
+     */
+    private short readRegister(byte register) {
         ByteBuffer buf = ByteBuffer.allocate(2);
         buf.order(ByteOrder.LITTLE_ENDIAN);
         m_i2c.read(register, 2, buf);
