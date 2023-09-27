@@ -13,7 +13,7 @@ import edu.wpi.first.wpilibj.I2C;
  * https://github.com/sparkfun/SparkFun_ADS1015_Arduino_Library
  * https://github.com/adafruit/Adafruit_ADS1X15
  * 
- * See datasheet:
+ * Sections and Tables referenced below are from the datasheet:
  * 
  * https://www.ti.com/lit/ds/symlink/ads1015.pdf
  * 
@@ -26,8 +26,42 @@ import edu.wpi.first.wpilibj.I2C;
  */
 public class ADS1015 {
     /**
+     * Operational status.
+     * 
+     * See Section 8.6.3, Table 6, bit 15, when writing.
+     */
+    public enum OS_W {
+        NOP(0b0000_0000_0000_0000),
+        START(0b1000_0000_0000_0000);
+
+        private final short value;
+
+        private OS_W(int value) {
+            this.value = (short) value;
+        }
+    }
+
+    /**
+     * Start a single conversion.
+     * 
+     * See Section 8.6.3, Table 6, bit 15, when reading.
+     */
+    public enum OS_R {
+        BUSY(0b0000_0000_0000_0000),
+        NOT_BUSY(0b1000_0000_0000_0000);
+
+        private final short value;
+        private static final short mask = (short) 0b1000_0000_0000_0000;
+
+        private OS_R(int value) {
+            this.value = (short) value;
+        }
+    }
+
+    /**
      * Input multiplexer configuration.
-     * See Table 6, bits 14:12.
+     * 
+     * See Section 8.6.3, Table 6, bits 14:12.
      */
     public enum MUX {
         SINGLE_0(0b0100_0000_0000_0000),
@@ -54,28 +88,33 @@ public class ADS1015 {
 
     /**
      * Programmable gain amplifier configuration.
-     * See Table 6, bits 11:9.
+     * 
+     * See Section 8.6.3, Table 6, bits 11:9.
      */
     public enum PGA {
-        FSR_6_144V(0b0000_0000_0000_0000, 6.144),
-        FSR_4_096V(0b0000_0010_0000_0000, 4.096),
-        FSR_2_048V(0b0000_0100_0000_0000, 2.048),
-        FSR_1_024V(0b0000_0110_0000_0000, 1.024),
-        FSR_0_512V(0b0000_1000_0000_0000, 0.512),
-        FSR_0_256V(0b0000_1010_0000_0000, 0.256);
+        FSR_6_144V(0b0000_0000_0000_0000, 3),
+        FSR_4_096V(0b0000_0010_0000_0000, 2),
+        FSR_2_048V(0b0000_0100_0000_0000, 1),
+        FSR_1_024V(0b0000_0110_0000_0000, 0.5),
+        FSR_0_512V(0b0000_1000_0000_0000, 0.25),
+        FSR_0_256V(0b0000_1010_0000_0000, 0.125);
 
         private final short value;
-        private final double halfRange;
+        /**
+         * Millivolts per bit.  See Section 8.3.3, Table 1.
+         */
+        private final double mV;
 
-        private PGA(int value, double halfRange) {
+        private PGA(int value, double mV) {
             this.value = (short) value;
-            this.halfRange = halfRange;
+            this.mV = mV;
         }
     }
 
     /**
      * Device operating mode.
-     * See Table 6, bit 8.
+     * 
+     * See Section 8.6.3, Table 6, bit 8.
      */
     public enum MODE {
         CONTINUOUS(0b0000_0000_0000_0000),
@@ -90,7 +129,8 @@ public class ADS1015 {
 
     /**
      * Data rate.
-     * See Table 6, bits 7:5
+     * 
+     * See Section 8.6.3, Table 6, bits 7:5
      */
     public enum DR {
         SPS_128(0b0000_0000_0000_0000, 128),
@@ -111,46 +151,30 @@ public class ADS1015 {
     }
 
     /**
-     * Operational status.
-     * See Table 6, bit 15, when writing.
-     */
-    public enum OS_W {
-        NOP(0b0000_0000_0000_0000),
-        START(0b1000_0000_0000_0000);
-
-        private final short value;
-
-        private OS_W(int value) {
-            this.value = (short) value;
-        }
-    }
-
-    /**
-     * Start a single conversion.
-     * See Table 6, bit 15, when reading.
-     */
-    public enum OS_R {
-        BUSY(0b0000_0000_0000_0000),
-        NOT_BUSY(0b1000_0000_0000_0000);
-
-        private final short value;
-        private static final short mask = (short) 0b1000_0000_0000_0000;
-
-        private OS_R(int value) {
-            this.value = (short) value;
-        }
-    }
-
-    /**
-     * I2C address. 7-bit addr is 0x48, 8-bit addr is 0x91
+     * I2C address.
+     * 
+     * 7-bit addr is 0x48, 8-bit addr is 0x91
      */
     private static final byte ADDR = (byte) 0x91;
+
     /**
-     * Conversion register. See datasheet 8.6.2.
+     * Conversion register.
+     * 
+     * Contains the 12-bit conversion result, left justified in 16 bits.
+     * 
+     * See Section 8.6.2.
      */
     private static final byte CONV_REG = (byte) 0x00;
+
     /**
-     * Config register. See datasheet 8.6.3.
+     * Config register.
+     * 
+     * Use the enums above to set bits in this register.
+     * 
+     * Bits 4:0 are unused, they pertain to the comparator function which sets
+     * physical pins.
+     * 
+     * See Section 8.6.3.
      */
     private static final byte CFG_REG = (byte) 0x01;
 
@@ -183,7 +207,7 @@ public class ADS1015 {
      * See Section 9.1.2 and Section 8.3.3.
      */
     public double readVolts(int channel) {
-        return readRaw(channel) * m_pga.halfRange / 2048;
+        return readRaw(channel) * m_pga.mV / 1000;
     }
 
     /**
@@ -193,7 +217,7 @@ public class ADS1015 {
      * long).
      */
     public short readRaw(int channel) {
-        if (channel > 3)
+        if (channel < 0 || channel > 3)
             throw new IllegalArgumentException(String.format("Illegal channel: %d", channel));
         startADCReading(MUX.get(channel));
         // Wait for the ADC to finish reading.
@@ -231,8 +255,7 @@ public class ADS1015 {
     }
 
     /**
-     * Tests the high bit of the config register to see if the device is currently
-     * doing a measurement.
+     * True if the device is currently doing a measurement.
      */
     private boolean busy() {
         return (readRegister(CFG_REG) & OS_R.mask) == OS_R.BUSY.value;
