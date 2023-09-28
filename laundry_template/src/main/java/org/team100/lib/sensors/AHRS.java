@@ -20,6 +20,7 @@ public class AHRS {
     public void update() {
         double newTimeSec = Timer.getFPGATimestamp();
         double dtSec = newTimeSec - previousTimeSec;
+        previousTimeSec = newTimeSec;
         double yawRateRadS = m_gyro.getYawRateRadS();
         double yawDeltaRad = yawRateRadS * dtSec;
         headingNWURad += yawDeltaRad;
