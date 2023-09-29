@@ -28,7 +28,7 @@ import frc.robot.subsystems.StabilizedLaundryDrive;
  */
 public class Robot extends TimedRobot {
     /** To try field-relative control. */
-    private static final boolean kFieldRelative = false;
+    private static final boolean kFieldRelative = true;
     /** To try yaw stabilization, make this true. */
     private static final boolean kStabilize = false;
 
@@ -50,6 +50,7 @@ public class Robot extends TimedRobot {
             FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
             m_drive = new FieldRelativeLaundryDrive(
                     ahrs,
+                    stick::reset,
                     stick::xSpeed1_1,
                     stick::ySpeed1_1,
                     drive);
