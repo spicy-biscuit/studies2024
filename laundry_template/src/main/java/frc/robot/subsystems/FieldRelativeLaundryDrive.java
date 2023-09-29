@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
 import org.team100.lib.sensors.AHRS;
@@ -33,16 +34,19 @@ public class FieldRelativeLaundryDrive implements LaundryDrive {
     }
 
     private final AHRS m_ahrs;
+    private final BooleanSupplier m_reset;
     private final DoubleSupplier m_xSpeed1_1;
     private final DoubleSupplier m_ySpeed1_1;
     private final DifferentialDrive m_drive;
 
     private final DoublePublisher xSpeedPub;
-    private final DoublePublisher ySpeedPub;
+    private final DoublePublisher zSpeedPub;
 
     private boolean m_enabled;
 
     /**
+     * @param ahrs      heading supplier
+     * @param reset     reset button supplier
      * @param xSpeed1_1 supplies desired field x speed in [-1,1] interval.
      *                  TODO: speed in meters per second.
      * @param ySpeed1_1 supplies desired field y rate in [-1,1] interval.
@@ -51,18 +55,20 @@ public class FieldRelativeLaundryDrive implements LaundryDrive {
      */
     public FieldRelativeLaundryDrive(
             AHRS ahrs,
+            BooleanSupplier reset,
             DoubleSupplier xSpeed1_1,
             DoubleSupplier ySpeed1_1,
             DifferentialDrive drive) {
         m_ahrs = ahrs;
+        m_reset = reset;
         m_xSpeed1_1 = xSpeed1_1;
         m_ySpeed1_1 = ySpeed1_1;
         m_drive = drive;
 
         NetworkTableInstance inst = NetworkTableInstance.getDefault();
-        NetworkTable table = inst.getTable("drive");
+        NetworkTable table = inst.getTable("FieldRelativeDrive");
         xSpeedPub = table.getDoubleTopic("xSpeed1_1").publish();
-        ySpeedPub = table.getDoubleTopic("ySpeed1-1").publish();
+        zSpeedPub = table.getDoubleTopic("zSpeed1_1").publish();
     }
 
     @Override
@@ -78,15 +84,18 @@ public class FieldRelativeLaundryDrive implements LaundryDrive {
 
     @Override
     public void periodic() {
+        if (m_reset.getAsBoolean()) {
+            m_ahrs.reset();
+        }
         m_ahrs.update();
         double xSpeed1_1 = m_xSpeed1_1.getAsDouble();
-        xSpeedPub.set(xSpeed1_1);
-
         double ySpeed1_1 = m_ySpeed1_1.getAsDouble();
-        ySpeedPub.set(ySpeed1_1);
+
+        Control control = Control.rotate(m_ahrs.getHeadingNWURad(), xSpeed1_1, ySpeed1_1);
+        xSpeedPub.set(control.x);
+        zSpeedPub.set(control.y);
 
         if (m_enabled) {
-            Control control = Control.rotate(m_ahrs.getHeadingNWURad(), xSpeed1_1, ySpeed1_1);
             m_drive.arcadeDrive(control.x, control.y, false);
         }
     }
