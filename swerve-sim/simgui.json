@@ -1,0 +1,20 @@
+{
+  "NTProvider": {
+    "types": {
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Drive with Heading:": "Command",
+      "/field": "Field2d"
+    },
+    "windows": {
+      "/field": {
+        "waypoint": {
+          "arrowSize": 21,
+          "style": "Track"
+        }
+      }
+    }
+  },
+  "NetworkTables Info": {
+    "visible": true
+  }
+}
