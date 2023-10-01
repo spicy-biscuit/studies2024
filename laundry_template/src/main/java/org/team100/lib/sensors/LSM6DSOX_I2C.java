@@ -138,9 +138,11 @@ public class LSM6DSOX_I2C {
 
     /**
      * Static offset.
+     * updated for "minibotNEO".
+     * TODO: different offset for each robot
      * TODO: capture offset at startup, when motionless.
      */
-    private static final int kRawOffset = -50;
+    private static final int kRawOffset = -16;
 
     private final I2C m_i2c;
     private final FS_G m_scale;

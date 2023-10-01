@@ -50,6 +50,7 @@ public class Robot extends TimedRobot {
             FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
             m_drive = new FieldRelativeLaundryDrive(
                     ahrs,
+                    stick::reset,
                     stick::xSpeed1_1,
                     stick::ySpeed1_1,
                     drive);
