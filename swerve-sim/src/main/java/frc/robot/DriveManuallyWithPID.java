@@ -1,7 +1,10 @@
 package frc.robot;
 
+import org.team100.lib.motion.drivetrain.SwerveState;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 
@@ -55,12 +58,17 @@ public class DriveManuallyWithPID extends Command {
         double yOutput = xController.calculate(newY, setpoint.getY());
         double thetaOutput = xController.calculate(newTheta, setpoint.getRotation().getRadians());
 
-        m_swerve.drive(xOutput, yOutput, thetaOutput, true);
+        Pose2d currentPose = m_swerve.getPose();
+        Twist2d twist = new Twist2d(xOutput, yOutput, thetaOutput);
+        SwerveState state = Drivetrain.incremental(currentPose, twist);
+        m_swerve.setDesiredState(state);
+
+        //m_swerve.drive(xOutput, yOutput, thetaOutput, true);
     }
 
     @Override
     public void end(boolean interrupted) {
-        m_swerve.drive(0,0,0,false);
+        m_swerve.truncate();
     }
 
 }

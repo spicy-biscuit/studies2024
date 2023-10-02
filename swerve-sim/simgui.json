@@ -1,4 +1,13 @@
 {
+  "HALProvider": {
+    "Other Devices": {
+      "AnalogGyro[0]": {
+        "header": {
+          "open": true
+        }
+      }
+    }
+  },
   "NTProvider": {
     "types": {
       "/FMSInfo": "FMSInfo",
@@ -10,11 +19,28 @@
         "waypoint": {
           "arrowSize": 21,
           "style": "Track"
+        },
+        "window": {
+          "visible": true
         }
       }
     }
   },
+  "NetworkTables": {
+    "transitory": {
+      "LiveWindow": {
+        ".status": {
+          "open": true
+        },
+        "open": true
+      }
+    }
+  },
   "NetworkTables Info": {
-    "visible": true
+    "Server": {
+      "Publishers": {
+        "open": true
+      }
+    }
   }
 }

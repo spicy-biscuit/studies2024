@@ -4,6 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.team100.lib.controller.DriveControllers;
+import org.team100.lib.controller.DriveControllersFactory;
+import org.team100.lib.controller.HolonomicDriveController2;
+import org.team100.lib.motion.drivetrain.VeeringCorrection;
+import org.team100.lib.motion.drivetrain.kinematics.FrameTransform;
 
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -11,13 +16,23 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.AnalogGyro;
 import util.PinkNoise;
 
 public class SwerveSimTest {
     private static final double DELTA = 0.001;
 
     Drivetrain newDrivetrain() {
-        Drivetrain m_swerve = new Drivetrain(() -> new PinkNoise.None());
+        DriveControllers controllers = new DriveControllersFactory().get();
+        HolonomicDriveController2 controller = new HolonomicDriveController2(controllers);
+        AnalogGyro gyro = new AnalogGyro(0);
+        VeeringCorrection veering = new VeeringCorrection(() -> -1.0 * gyro.getRate());
+        FrameTransform m_frameTransform = new FrameTransform(veering);
+        Drivetrain m_swerve = new Drivetrain(
+                gyro,
+                () -> new PinkNoise.None(),
+                controller,
+                m_frameTransform);
         m_swerve.simulationInit();
         m_swerve.m_frontLeft.m_drivePIDController.reset();
         m_swerve.m_frontRight.m_drivePIDController.reset();
@@ -119,7 +134,7 @@ public class SwerveSimTest {
             assertEquals(0.251, m_swerve.m_backLeft.getDriveOutput(), DELTA, "BL output");
             assertEquals(0.251, m_swerve.m_backRight.getDriveOutput(), DELTA, "BR output");
             m_swerve.simulationPeriodic(0.02);
-            //m_swerve.updateOdometry();
+            // m_swerve.updateOdometry();
             final Pose2d finalPose = m_swerve.getPose();
 
             // since the feedforward is treated as correct but the controller
@@ -203,7 +218,7 @@ public class SwerveSimTest {
             assertEquals(-0.151, m_swerve.m_backLeft.driveFeedforward, DELTA, "BL ff");
             assertEquals(0.151, m_swerve.m_backRight.driveFeedforward, DELTA, "BR ff");
 
-            // add ctrl and ff, 0.251.  0.25, maybe this is a rounding issue?
+            // add ctrl and ff, 0.251. 0.25, maybe this is a rounding issue?
             assertEquals(-0.25, m_swerve.m_frontLeft.getDriveOutput(), DELTA, "FL output");
             assertEquals(0.251, m_swerve.m_frontRight.getDriveOutput(), DELTA, "FR output");
             assertEquals(-0.25, m_swerve.m_backLeft.getDriveOutput(), DELTA, "BL output");
@@ -217,7 +232,7 @@ public class SwerveSimTest {
             assertEquals(-0.025, m_swerve.m_backLeft.getPosition().distanceMeters, DELTA, "BL m");
             assertEquals(0.025, m_swerve.m_backRight.getPosition().distanceMeters, DELTA, "BR m");
 
-            // no x or y movement.  weird that it's not *quite* zero.
+            // no x or y movement. weird that it's not *quite* zero.
             assertEquals(0.001, m_swerve.speeds.vxMetersPerSecond, DELTA, "chassis speed x");
             assertEquals(0, m_swerve.speeds.vyMetersPerSecond, DELTA, "chassis speed y");
 
@@ -377,8 +392,6 @@ public class SwerveSimTest {
             assertEquals(0, odoPose.getX(), DELTA, "x odo pose");
             assertEquals(0.025, odoPose.getY(), DELTA, "y odo pose");
             assertEquals(Math.PI / 2, odoPose.getRotation().getRadians(), DELTA, "theta odo pose");
-
-
 
             // chassis moving in x (ahead), note this isn't field relative, it's chassis
             // relative.

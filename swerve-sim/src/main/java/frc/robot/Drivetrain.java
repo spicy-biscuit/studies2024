@@ -4,11 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.team100.lib.commands.DriveUtil;
+import org.team100.lib.controller.HolonomicDriveController2;
+import org.team100.lib.controller.State100;
+import org.team100.lib.motion.drivetrain.SwerveState;
+import org.team100.lib.motion.drivetrain.kinematics.FrameTransform;
+
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
@@ -44,9 +51,9 @@ public class Drivetrain extends Subsystem {
     final SwerveModule m_backLeft;
     final SwerveModule m_backRight;
 
-    final AnalogGyro m_gyro = new AnalogGyro(0);
+    final AnalogGyro m_gyro;
     // note gyro is NED, robot is NWU, see inversion below.
-    final AnalogGyroSim gyroSim = new AnalogGyroSim(m_gyro);
+    final AnalogGyroSim gyroSim;
 
     final SwerveDriveKinematics m_kinematics = new SwerveDriveKinematics(
             m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation);
@@ -82,7 +89,17 @@ public class Drivetrain extends Subsystem {
 
     ChassisSpeeds speeds;
 
-    public Drivetrain(Supplier<PinkNoise> noiseSource) {
+    private SwerveState m_desiredState;
+
+    private final HolonomicDriveController2 m_controller;
+    FrameTransform m_frameTransform;
+
+    public Drivetrain(AnalogGyro gyro,
+            Supplier<PinkNoise> noiseSource,
+            HolonomicDriveController2 controller,
+            FrameTransform frameTransform) {
+        m_gyro = gyro;
+        gyroSim = new AnalogGyroSim(m_gyro);
         m_frontLeft = new SwerveModule("FrontLeft", 1, 2, 0, 1, 2, 3, noiseSource.get());
         m_frontRight = new SwerveModule("FrontRight", 3, 4, 4, 5, 6, 7, noiseSource.get());
         m_backLeft = new SwerveModule("BackLeft", 5, 6, 8, 9, 10, 11, noiseSource.get());
@@ -97,7 +114,8 @@ public class Drivetrain extends Subsystem {
                         m_backRight.getPosition()
                 },
                 new Pose2d());
-
+        m_controller = controller;
+        m_frameTransform = frameTransform;
         m_gyro.reset();
         headingController = new ProfiledPIDController( //
                 0.67, // kP //0.75
@@ -108,12 +126,14 @@ public class Drivetrain extends Subsystem {
                         4 * Math.PI)); // accel rad/s/s
         headingController.setTolerance(0.01);
 
-        inst.startClient4("blarg");
+        // inst.startClient4("blarg");
         NetworkTable fieldTable = inst.getTable("field");
         robotPosePub = fieldTable.getDoubleArrayTopic("robotPose").publish();
         // waypointPub = fieldTable.getDoubleArrayTopic("waypoint").publish();
         fieldTypePub = fieldTable.getStringTopic(".type").publish();
         fieldTypePub.set("Field2d");
+        setName("Drivetrain");
+        truncate();
     }
 
     public Pose2d getPose() {
@@ -140,20 +160,23 @@ public class Drivetrain extends Subsystem {
      * @param fieldRelative Whether the provided x and y speeds are relative to the
      *                      field.
      */
-    public void drive(double xSpeedM_s, double ySpeedM_s, double rotRad_s, boolean fieldRelative) {
-        xSpeedPubM_s.set(xSpeedM_s);
-        ySpeedPubM_s.set(ySpeedM_s);
-        thetaSpeedPubRad_s.set(rotRad_s);
+    // public void drive(double xSpeedM_s, double ySpeedM_s, double rotRad_s, boolean fieldRelative) {
+    //     xSpeedPubM_s.set(xSpeedM_s);
+    //     ySpeedPubM_s.set(ySpeedM_s);
+    //     thetaSpeedPubRad_s.set(rotRad_s);
 
-        SwerveModuleState[] swerveModuleStates = m_kinematics.toSwerveModuleStates(
-                fieldRelative
-                        ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                                xSpeedM_s, ySpeedM_s, rotRad_s,
-                                m_gyro.getRotation2d() // NWU
-                        )
-                        : new ChassisSpeeds(xSpeedM_s, ySpeedM_s, rotRad_s));
+    //     ChassisSpeeds chassisSpeeds = fieldRelative ? ChassisSpeeds.fromFieldRelativeSpeeds(
+    //             xSpeedM_s, ySpeedM_s, rotRad_s,
+    //             m_gyro.getRotation2d() // NWU
+    //     ) : new ChassisSpeeds(xSpeedM_s, ySpeedM_s, rotRad_s);
 
-        setModuleStates(swerveModuleStates);
+
+    //     setChassisSpeeds(chassisSpeeds);
+    // }
+
+
+    public void setChassisSpeeds(ChassisSpeeds chassisSpeeds) {
+        setModuleStates(m_kinematics.toSwerveModuleStates(chassisSpeeds));
     }
 
     // adapted from main2023 on Jul 9 2023
@@ -257,6 +280,29 @@ public class Drivetrain extends Subsystem {
         m_backRight.simulationInit();
     }
 
+    /** Drive to the desired reference. */
+    @Override
+    public void periodic() {
+        updateOdometry();
+        driveToReference();
+        // m_field.setRobotPose(getPose());
+    }
+
+    private void driveToReference() {
+        // TODO: pose should be a full state, with velocity and acceleration.
+        Pose2d currentPose = getPose();
+
+        Twist2d fieldRelativeTarget = m_controller.calculate(currentPose, m_desiredState);
+        driveInFieldCoords(fieldRelativeTarget);
+    }
+
+    private void driveInFieldCoords(Twist2d twist) {
+        ChassisSpeeds targetChassisSpeeds = m_frameTransform.fromFieldRelativeSpeeds(
+                twist.dx, twist.dy, twist.dtheta, getPose().getRotation());
+        // m_swerveLocal.setChassisSpeeds(targetChassisSpeeds);
+        setChassisSpeeds(targetChassisSpeeds);
+    }
+
     @Override
     public void simulationPeriodic() {
         double currentTimeSeconds = Timer.getFPGATimestamp();
@@ -305,5 +351,43 @@ public class Drivetrain extends Subsystem {
         m_backLeft.close();
         m_backRight.close();
         m_gyro.close();
+    }
+
+    /**
+     * Helper for incremental driving.
+     * 
+     * Note the returned state has zero acceleration, which is wrong.
+     * 
+     * TODO: correct acceleration.
+     * 
+     * @param twistM_S incremental input in m/s and rad/s
+     * @return SwerveState representing 0.02 sec of twist applied to the current
+     *         pose.
+     */
+    public static SwerveState incremental(Pose2d currentPose, Twist2d twistM_S) {
+        Twist2d twistM = DriveUtil.scale(twistM_S, 0.02, 0.02);
+        Pose2d ref = currentPose.exp(twistM);
+        return new SwerveState(
+                new State100(ref.getX(), twistM_S.dx, 0),
+                new State100(ref.getY(), twistM_S.dy, 0),
+                new State100(ref.getRotation().getRadians(), twistM_S.dtheta, 0));
+
+    }
+
+    public void setDesiredState(SwerveState desiredState) {
+        m_desiredState = desiredState;
+    }
+
+    public void truncate() {
+        stop();
+        Pose2d currentPose = getPose();
+        m_desiredState = new SwerveState(
+                new State100(currentPose.getX(), 0, 0),
+                new State100(currentPose.getY(), 0, 0),
+                new State100(currentPose.getRotation().getRadians(), 0, 0));
+    }
+
+    public void stop() {
+        // m_swerveLocal.stop();
     }
 }

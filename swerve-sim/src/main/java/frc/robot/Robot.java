@@ -6,11 +6,16 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.team100.frc2023.autonomous.Autonomous;
 import org.team100.frc2023.commands.DriveManually;
-import org.team100.frc2023.commands.DrivePositional;
 import org.team100.frc2023.commands.ResetRotation;
 import org.team100.frc2023.control.LogitechExtreme3dControl;
 import org.team100.frc2023.control.ManualControl;
+import org.team100.lib.controller.DriveControllers;
+import org.team100.lib.controller.DriveControllersFactory;
+import org.team100.lib.controller.HolonomicDriveController2;
+import org.team100.lib.motion.drivetrain.VeeringCorrection;
+import org.team100.lib.motion.drivetrain.kinematics.FrameTransform;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
@@ -22,19 +27,21 @@ import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
+import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SwerveControllerCommand;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.WrapperCommand;
 import util.PinkNoise;
 
 public class Robot extends TimedRobot {
     private final ManualControl m_manualControl;
     private final Drivetrain m_swerve;
     private final Command m_driveCommand;
-  //  private final Command m_drivePositional;
+    // private final Command m_drivePositional;
 
     Command autoc;
     ProfiledPIDController m_rotationController;
@@ -61,9 +68,20 @@ public class Robot extends TimedRobot {
     // private final DoublePublisher m_YErrorPub =
     // m_table.getDoubleTopic("yError").publish();
 
+    VeeringCorrection veering;
+
+    FrameTransform m_frameTransform;
+
     public Robot() {
+        final AnalogGyro gyro = new AnalogGyro(0);
+        DriveControllers controllers = new DriveControllersFactory().get();
+        HolonomicDriveController2 controller = new HolonomicDriveController2(controllers);
+        veering = new VeeringCorrection(() -> -1.0 * gyro.getRate());
+        m_frameTransform = new FrameTransform(veering);
         // alpha = 1.5 => between "pink" and random-walk "brownian"
-        m_swerve = new Drivetrain(() -> new PinkNoise(1.5, 3));
+        m_swerve = new Drivetrain(gyro,
+                () -> new PinkNoise(1.5, 3), controller, m_frameTransform);
+
         // m_manualControl = new XboxControl();
         m_manualControl = new LogitechExtreme3dControl();
         // m_manualControl = new Pilot();
@@ -98,7 +116,21 @@ public class Robot extends TimedRobot {
         // autoc = auto();
         // autoc = circle();
         // autoc = toWaypoint();
-        autoc = toWaypoint2();
+        // autoc = toWaypoint2();
+        autoc = new WrapperCommand(
+                new Autonomous(m_swerve, m_frameTransform, m_swerve.m_gyro, 2)) {
+            @Override
+            public void execute() {
+                System.out.println("wrapper execute");
+                m_command.execute();
+            }
+
+            @Override
+            public void end(boolean interrupted) {
+                System.out.println("wrapper end");
+                m_command.end(interrupted);
+            }
+        };
         autoc.schedule();
     }
 
@@ -185,7 +217,7 @@ public class Robot extends TimedRobot {
                 () -> new Rotation2d(0), // no robot rotation at all
                 m_swerve::setModuleStates, m_swerve);
 
-        return swerveControllerCommand0.andThen(() -> m_swerve.drive(0, 0, 0, true));
+        return swerveControllerCommand0.andThen(() -> m_swerve.truncate());
     }
 
     /**
@@ -256,7 +288,13 @@ public class Robot extends TimedRobot {
                 .andThen(swerveControllerCommand1).andThen(new WaitCommand(0.1))
                 .andThen(swerveControllerCommand2).andThen(new WaitCommand(0.1))
                 .andThen(swerveControllerCommand3).andThen(new WaitCommand(0.1))
-                .andThen(() -> m_swerve.drive(0, 0, 0, true));
+                .andThen(() -> m_swerve.truncate());
+    }
+
+    @Override
+    public void teleopInit() {
+        System.out.println("teleop init");
+        super.teleopInit();
     }
 
     @Override
@@ -280,6 +318,10 @@ public class Robot extends TimedRobot {
         // m_swerve.updateOdometry();
         // if you forget this scheduler thing then nothing will happen
         CommandScheduler.getInstance().run();
+        System.out.printf("teleop %b, drive scheduled %b, default %s\n",
+                isTeleopEnabled(),
+                CommandScheduler.getInstance().isScheduled(m_driveCommand),
+                m_swerve.getDefaultCommand().getName());
     }
 
     @Override
