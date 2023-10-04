@@ -6,6 +6,10 @@ public interface LaundryDrive {
 
     void disable();
 
-    void periodic();
+    void autonomousInit();
+
+    void autonomousPeriodic();
+
+    void teleopPeriodic();
 
 }

@@ -26,6 +26,7 @@ public class LaundryArm extends Subsystem {
 
     private double m_goalTurns;
     private boolean m_enabled;
+    private boolean m_placeFinished;
 
     /**
      * @param dumpControl supplies true to dump the basket
@@ -62,6 +63,26 @@ public class LaundryArm extends Subsystem {
         m_enabled = false;
         m_motor.set(0);
         outputPub.set(0);
+    }
+
+    public void autonomousInit() {
+        m_placeFinished = false;
+        dump();
+    }
+
+    public void autonomousPeriodic() {
+        double measurementTurns = getMeasurementTurns();
+        if (Math.abs(m_goalTurns-measurementTurns) < .1) {
+            m_placeFinished = true;
+            level();
+        }
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        m_motor.set(output);
+        outputPub.set(output);
+    }
+
+    public boolean placeFinished() {
+        return m_placeFinished;
     }
 
     @Override

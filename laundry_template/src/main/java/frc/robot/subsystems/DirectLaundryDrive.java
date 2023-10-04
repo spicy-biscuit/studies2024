@@ -16,6 +16,7 @@ public class DirectLaundryDrive implements LaundryDrive {
     private final DoublePublisher zSpeedPub;
 
     private boolean m_enabled;
+    private double i;
 
     /**
      * @param xSpeed1_1 supplies desired x speed in [-1,1] interval.
@@ -50,7 +51,20 @@ public class DirectLaundryDrive implements LaundryDrive {
     }
 
     @Override
-    public void periodic() {
+    public void autonomousInit() {
+        i = 0;
+    }
+
+    @Override
+    public void autonomousPeriodic() {
+        if (i < 100) {
+            m_drive.arcadeDrive(-1, 0, false);
+            i++;
+        }
+    }
+
+    @Override
+    public void teleopPeriodic() {
         double xSpeed1_1 = m_xSpeed1_1.getAsDouble();
         xSpeedPub.set(xSpeed1_1);
 

@@ -98,12 +98,26 @@ public class Robot extends TimedRobot {
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            80, // max velocity (infinite)
+                            40)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         }
     }
+    @Override
+    public void autonomousInit() {
+        m_arm.autonomousInit();
+        m_drive.autonomousInit();
+    }
 
+    @Override
+    public void autonomousPeriodic() {
+        if (m_arm.placeFinished()) {
+            m_arm.autonomousPeriodic();
+            m_drive.autonomousPeriodic();
+            return;
+        }
+        m_arm.autonomousPeriodic();
+    }
     @Override
     public void teleopInit() {
         m_drive.enable();
@@ -117,8 +131,8 @@ public class Robot extends TimedRobot {
     }
 
     @Override
-    public void robotPeriodic() {
-        m_drive.periodic();
+    public void teleopPeriodic() {
+        m_drive.teleopPeriodic();
         m_arm.periodic();
     }
 }

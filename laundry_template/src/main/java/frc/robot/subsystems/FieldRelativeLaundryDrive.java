@@ -43,6 +43,7 @@ public class FieldRelativeLaundryDrive implements LaundryDrive {
     private final DoublePublisher zSpeedPub;
 
     private boolean m_enabled;
+    private double i;
 
     /**
      * @param ahrs      heading supplier
@@ -83,7 +84,20 @@ public class FieldRelativeLaundryDrive implements LaundryDrive {
     }
 
     @Override
-    public void periodic() {
+    public void autonomousInit() {
+        i = 0;
+    }
+
+    @Override
+    public void autonomousPeriodic() {
+        if (i < 100) {
+            m_drive.arcadeDrive(-1, 0, false);
+            i++;
+        }
+    }
+
+    @Override
+    public void teleopPeriodic() {
         if (m_reset.getAsBoolean()) {
             m_ahrs.reset();
         }

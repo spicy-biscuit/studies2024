@@ -29,6 +29,7 @@ public class StabilizedLaundryDrive implements LaundryDrive {
     private final DoublePublisher outputZSpeedPub;
 
     private boolean m_enabled;
+    private double i;
 
     /**
      * @param gyro measures rotation rate
@@ -72,7 +73,20 @@ public class StabilizedLaundryDrive implements LaundryDrive {
     }
 
     @Override
-    public void periodic() {
+    public void autonomousInit() {
+        i = 0;
+    }
+
+    @Override
+    public void autonomousPeriodic() {
+        if (i < 100) {
+            m_drive.arcadeDrive(-1, 0, false);
+            i++;
+        }
+    }
+
+    @Override
+    public void teleopPeriodic() {
         double xSpeed1_1 = m_xSpeed1_1.getAsDouble();
         xSpeedPub.set(xSpeed1_1);
 
