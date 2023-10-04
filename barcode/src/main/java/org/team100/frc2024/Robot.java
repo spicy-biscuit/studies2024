@@ -47,8 +47,7 @@ public class Robot extends TimedRobot {
     public void teleopPeriodic() {
         System.out.println(m_array.readValue());
         System.out.printf("0: %5.3f 1: %5.3f\n",
-                    m_input.getAverageVoltage(),
-                    m_testInput.getAverageVoltage());
+                    m_input.getAverageVoltage());
     }
 
     @Override
