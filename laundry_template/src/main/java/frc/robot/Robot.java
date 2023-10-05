@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.control.FieldRelativeLaundryStick;
 import frc.robot.control.RobotRelativeLaundryStick;
 import frc.robot.subsystems.DirectLaundryDrive;
@@ -46,8 +47,9 @@ public class Robot extends TimedRobot {
         if (kFieldRelative) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
             AHRS ahrs = new AHRS(gyro);
-            Joystick joystick = new Joystick(0);
-            FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
+            // Joystick joystick = new Joystick(0);
+            CommandXboxController controller = new CommandXboxController(0);
+            FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(controller);
             m_drive = new FieldRelativeLaundryDrive(
                     ahrs,
                     stick::reset,
@@ -60,8 +62,8 @@ public class Robot extends TimedRobot {
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            1, // max velocity (infinite)
+                            1)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else if (kStabilize) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();

@@ -14,7 +14,8 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class LaundryArm extends Subsystem {
     // TODO: try lower gear ratios
-    private static final int kGearRatio = 125;
+    private static final int kGearRatio = 5;
+    private static final double kOutput = 0.1;
 
     private final BooleanSupplier m_dumpControl;
     private final ProfiledPIDController m_controller;
@@ -66,7 +67,7 @@ public class LaundryArm extends Subsystem {
     }
 
     public void autonomousInit() {
-        m_placeFinished = false;
+        m_placeFinished = true;
         dump();
     }
 
@@ -93,7 +94,7 @@ public class LaundryArm extends Subsystem {
             level();
         }
         double measurementTurns = getMeasurementTurns();
-        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1.0 * kOutput, kOutput);
         if (m_enabled) {
             m_motor.set(output);
             outputPub.set(output);

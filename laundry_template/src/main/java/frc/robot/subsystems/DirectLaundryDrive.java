@@ -57,8 +57,8 @@ public class DirectLaundryDrive implements LaundryDrive {
 
     @Override
     public void autonomousPeriodic() {
-        if (i < 100) {
-            m_drive.arcadeDrive(-1, 0, false);
+        if (i < 150) {
+            m_drive.arcadeDrive(-0.35, -0.04, false);
             i++;
         }
     }
