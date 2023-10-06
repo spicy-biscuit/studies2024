@@ -9,6 +9,7 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -37,7 +38,8 @@ public class Robot extends TimedRobot {
     private final LaundryArm m_arm;
 
     public Robot() {
-
+        DataLogManager.start();
+        
         Talon leftMotor = new Talon(0);
         Talon rightMotor = new Talon(1);
         leftMotor.setInverted(true);
