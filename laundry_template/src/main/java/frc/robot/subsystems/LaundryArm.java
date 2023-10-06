@@ -14,7 +14,8 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class LaundryArm extends Subsystem {
     // TODO: try lower gear ratios
-    private static final int kGearRatio = 125;
+    private static final int kGearRatio = 5;
+    private static final double kOutput = 0.1;
 
     private final BooleanSupplier m_dumpControl;
     private final ProfiledPIDController m_controller;
@@ -26,6 +27,7 @@ public class LaundryArm extends Subsystem {
 
     private double m_goalTurns;
     private boolean m_enabled;
+    private boolean m_placeFinished;
 
     /**
      * @param dumpControl supplies true to dump the basket
@@ -64,6 +66,26 @@ public class LaundryArm extends Subsystem {
         outputPub.set(0);
     }
 
+    public void autonomousInit() {
+        m_placeFinished = true;
+        dump();
+    }
+
+    public void autonomousPeriodic() {
+        double measurementTurns = getMeasurementTurns();
+        if (Math.abs(m_goalTurns-measurementTurns) < .1) {
+            m_placeFinished = true;
+            level();
+        }
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        m_motor.set(output);
+        outputPub.set(output);
+    }
+
+    public boolean placeFinished() {
+        return m_placeFinished;
+    }
+
     @Override
     public void periodic() {
         if (m_dumpControl.getAsBoolean()) {
@@ -72,7 +94,7 @@ public class LaundryArm extends Subsystem {
             level();
         }
         double measurementTurns = getMeasurementTurns();
-        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1.0 * kOutput, kOutput);
         if (m_enabled) {
             m_motor.set(output);
             outputPub.set(output);
