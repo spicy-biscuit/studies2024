@@ -7,6 +7,7 @@ import com.revrobotics.CANSparkMax.IdleMode;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -14,8 +15,8 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class LaundryArm extends Subsystem {
     // TODO: try lower gear ratios
-    private static final int kGearRatio = 5;
-    private static final double kOutput = 0.1;
+    private static final int kGearRatio = 15;
+    private static final double kOutput = 1.0;
 
     private final BooleanSupplier m_dumpControl;
     private final ProfiledPIDController m_controller;
@@ -67,7 +68,7 @@ public class LaundryArm extends Subsystem {
     }
 
     public void autonomousInit() {
-        m_placeFinished = true;
+        m_placeFinished = false;
         dump();
     }
 
@@ -77,7 +78,7 @@ public class LaundryArm extends Subsystem {
             m_placeFinished = true;
             level();
         }
-        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1.0*kOutput, kOutput);
         m_motor.set(output);
         outputPub.set(output);
     }
@@ -94,10 +95,16 @@ public class LaundryArm extends Subsystem {
             level();
         }
         double measurementTurns = getMeasurementTurns();
-        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1.0 * kOutput, kOutput);
+        double output = m_controller.calculate(measurementTurns, m_goalTurns);
+        double angleOffsetRadians = 0.75;
+        double measurementRadians = Units.rotationsToRadians(measurementTurns) ;
+        double angleRadians = -1.0 * measurementRadians + angleOffsetRadians;
+        double gravityTorque = -0.06 * Math.cos(angleRadians);
+        double uTotal = output + gravityTorque;
+        uTotal = MathUtil.clamp(uTotal, -1.0 * kOutput, kOutput);
         if (m_enabled) {
-            m_motor.set(output);
-            outputPub.set(output);
+            m_motor.set(uTotal);
+            outputPub.set(uTotal);
         }
     }
 

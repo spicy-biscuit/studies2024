@@ -58,12 +58,12 @@ public class Robot extends TimedRobot {
                     drive);
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            1, // max velocity (infinite)
-                            1)); // max accel (infinite)
+                            1, // max velocity
+                            1)); // max accel
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else if (kStabilize) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
@@ -79,12 +79,12 @@ public class Robot extends TimedRobot {
                     drive);
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            1, // max velocity (infinite)
+                            1)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else {
             Joystick joystick = new Joystick(0);
@@ -96,12 +96,12 @@ public class Robot extends TimedRobot {
 
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            80, // max velocity (infinite)
-                            40)); // max accel (infinite)
+                            1, // max velocity (infinite)
+                            1)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         }
     }
