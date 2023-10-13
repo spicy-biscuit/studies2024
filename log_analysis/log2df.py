@@ -1,6 +1,5 @@
 import datalog
 import mmap
-import datetime
 import pandas as pd
 
 
@@ -13,7 +12,6 @@ def log2df(filename: str) -> pd.DataFrame:
         entries = {}  # to look up names, key = 'entry', value = start data
         rows = {}  # key = index = timestamp, value = dictionary of columns
         for record in reader:
-            timestamp = record.timestamp
             if record.isStart():
                 data = record.getStartData()
                 entries[data.entry] = data

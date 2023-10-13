@@ -5,8 +5,8 @@
 
 import array
 import struct
-import msgpack
 from typing import List, SupportsBytes
+import msgpack
 
 __all__ = ["StartRecordData", "MetadataRecordData", "DataLogRecord", "DataLogReader"]
 

@@ -1,9 +1,10 @@
-import log2df
-import pandas as pd
 import cProfile
 import io
 import pstats
 from pstats import SortKey
+
+
+import log2df
 
 with cProfile.Profile() as pr:
     for i in range(10):
@@ -14,5 +15,3 @@ with cProfile.Profile() as pr:
     ps.print_stats()
     ps.print_callers()
     print(s.getvalue())
-
-# print(df.columns)
