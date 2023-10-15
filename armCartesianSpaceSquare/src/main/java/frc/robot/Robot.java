@@ -60,7 +60,8 @@ public class Robot extends TimedRobot {
   private AnalogEncoder lowerArmEncoder;
   private AnalogEncoder upperArmEncoder;
   private ArmAngles m_reference;
-
+  double u1;
+  double u2;
   private RobotContainer m_robotContainer;
 
   @Override
@@ -131,8 +132,8 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     m_trajec.execute();
     ArmAngles measurement = getMeasurement();
-    double u1 = m_lowerController.calculate(measurement.th1, m_reference.th1);
-    double u2 = m_upperController.calculate(measurement.th2, m_reference.th2);
+    u1 = m_lowerController.calculate(measurement.th1, m_reference.th1);
+     u2 = m_upperController.calculate(measurement.th2, m_reference.th2);
     System.out.println("lower: " +measurement.th1 + " " + m_reference.th1);
     System.out.println("upper: " +measurement.th2 + " " + m_reference.th2);
     System.out.println("OUTPUT: " +u1 + " " + u2);
