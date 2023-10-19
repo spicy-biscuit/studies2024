@@ -91,6 +91,7 @@ public class ArmTrajectories {
             return null;}
     }
 
+    // note proximal is y
     private Pose2d startPose(ArmAngles start, double degrees) {
         return new Pose2d(start.th2, start.th1, Rotation2d.fromDegrees(degrees));
     }

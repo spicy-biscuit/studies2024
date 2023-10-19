@@ -27,6 +27,7 @@ import frc.robot.armMotion.ArmKinematics;
  */
 public class JointVisualizer {
 
+    /** Return a dataset with one series with proximal in x and distal in y */
     private static XYSeriesCollection joints() {
         XYSeriesCollection dataset = new XYSeriesCollection();
         TrajectoryConfig config = new TrajectoryConfig(1, 1);
@@ -38,29 +39,48 @@ public class JointVisualizer {
         XYSeries series1 = new XYSeries("Joints");
         for (double t = 0; t < trajectory.getTotalTimeSeconds(); t += 0.1) {
             Trajectory.State s = trajectory.sample(t);
-            double x1 = s.poseMeters.getX();
-            double y1 = s.poseMeters.getY();
+            // note distal is X here
+            // TODO: reverse these
+            double x1 = s.poseMeters.getY(); // proximal
+            double y1 = s.poseMeters.getX(); // distal
             series1.add(x1, y1);
         }
         dataset.addSeries(series1);
         return dataset;
     }
 
+    /**
+     * Add end and elbow series.
+     * 
+     * X represents "z" i.e. height
+     * Y represents "x" i.e. forward
+     * 
+     * @param data has proximal in x and distal in y
+     * 
+     */
     private static XYSeriesCollection jointToCartesian(XYSeriesCollection data) {
         ArmKinematics k = new ArmKinematics(1, 1);
         XYSeries joints = data.getSeries(0);
-        XYSeries cartesian = new XYSeries("Cartesian");
+        XYSeries end = new XYSeries("Cartesian End");
+        XYSeries elbow = new XYSeries("Cartesian Elbow");
         int ct = joints.getItemCount();
         for (int i = 0; i < ct; ++i) {
-            Number nx = joints.getX(i);
-            Number ny = joints.getY(i);
+            Number nx = joints.getX(i); // proximal
+            Number ny = joints.getY(i); // distal
             double proximal = nx.doubleValue();
             double distal = ny.doubleValue();
-            Translation2d c = k.forward(new ArmAngles(proximal, distal));
-            cartesian.add(c.getX(), c.getY());
+            ArmAngles a = new ArmAngles(proximal, distal);
+            Translation2d c = k.forward(a);
+            end.add(c.getY(), c.getX());
+            Translation2d el = k.elbow(a);
+            elbow.add(el.getY(), el.getX());
         }
         XYSeriesCollection result = new XYSeriesCollection();
-        result.addSeries(cartesian);
+        result.addSeries(end);
+        result.addSeries(elbow);
+        XYSeries base = new XYSeries("Base");
+        base.add(0, 0);
+        result.addSeries(base);
         return result;
 
     }
@@ -78,12 +98,15 @@ public class JointVisualizer {
                     "Distal (Upper)",
                     joints);
 
-            ((XYPlot) jointChart.getPlot()).setBackgroundPaint(Color.WHITE);
+            XYPlot jointXY = (XYPlot) jointChart.getPlot();
+            jointXY.setBackgroundPaint(Color.WHITE);
+            jointXY.getDomainAxis().setRange(0, 1.5); // 1.5
+            jointXY.getRangeAxis().setRange(1.0, 2.5); // 1.5
 
             ChartPanel jointPanel = new ChartPanel(jointChart) {
                 @Override
                 public Dimension getPreferredSize() {
-                    return new Dimension(400,400);
+                    return new Dimension(400, 400);
                 }
             };
             frame.add(jointPanel, BorderLayout.EAST);
@@ -91,16 +114,19 @@ public class JointVisualizer {
             XYSeriesCollection cartesian = jointToCartesian(joints);
             JFreeChart cartesianChart = ChartFactory.createScatterPlot(
                     "Trajectory in Cartesian Space",
-                    "X",
-                    "Y",
+                    "X (forward)",
+                    "Z (up)",
                     cartesian);
 
-            ((XYPlot) cartesianChart.getPlot()).setBackgroundPaint(Color.WHITE);
+            XYPlot cartesianXY = (XYPlot) cartesianChart.getPlot();
+            cartesianXY.setBackgroundPaint(Color.WHITE);
+            cartesianXY.getDomainAxis().setRange(-0.5, 1.5);
+            cartesianXY.getRangeAxis().setRange(-0.5, 1.5);
 
             ChartPanel cartesianPanel = new ChartPanel(cartesianChart) {
                 @Override
                 public Dimension getPreferredSize() {
-                    return new Dimension(400,400);
+                    return new Dimension(400, 400);
                 }
             };
             frame.add(cartesianPanel, BorderLayout.WEST);
