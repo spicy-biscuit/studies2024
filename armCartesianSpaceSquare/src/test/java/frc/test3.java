@@ -12,15 +12,16 @@ import frc.robot.armMotion.ArmAngles;
 import frc.robot.armMotion.ArmKinematics;
 
 public class test3 {
-    public ArmKinematics kinematics;
+    public ArmKinematics kinematics = new ArmKinematics(1, 1);
     public ArmAngles t0 = kinematics.inverse(new Translation2d(1, 1));
     public ArmAngles t1 = kinematics.inverse(new Translation2d(1.1, 1));
     public ArmAngles t2 = kinematics.inverse(new Translation2d(1.1, 1.1));
     public ArmAngles t3 = kinematics.inverse(new Translation2d(1, 1.1));
+
     @Test
     void testUnreachable() {
-            List<Translation2d> list = List.of(new Translation2d(t0.th2, t0.th1), new Translation2d(t1.th2, t1.th1),
-                    new Translation2d(t2.th2, t2.th1), new Translation2d(t3.th2, t3.th1));
+        List<Translation2d> list = List.of(new Translation2d(t0.th2, t0.th1), new Translation2d(t1.th2, t1.th1),
+                new Translation2d(t2.th2, t2.th1), new Translation2d(t3.th2, t3.th1));
         assertNotNull(list);
     }
 

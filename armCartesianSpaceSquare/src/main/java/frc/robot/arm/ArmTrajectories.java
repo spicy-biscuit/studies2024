@@ -57,7 +57,7 @@ public class ArmTrajectories {
     }
 
     /** from current location to an endpoint */
-    private Trajectory onePoint(ArmAngles start, ArmAngles end, double degrees) {
+    public Trajectory onePoint(ArmAngles start, ArmAngles end, double degrees) {
         return withList(start, List.of(), end, degrees);
     }
 
