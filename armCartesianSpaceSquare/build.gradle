@@ -76,6 +76,7 @@ dependencies {
     testImplementation 'org.hamcrest:hamcrest-library:2.2'
 
     implementation "org.ejml:ejml-simple:0.42"
+    implementation "org.jfree:jfreechart:1.5.3"
 }
 
 test {
