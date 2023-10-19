@@ -32,9 +32,10 @@ public class JointVisualizer {
         XYSeriesCollection dataset = new XYSeriesCollection();
         TrajectoryConfig config = new TrajectoryConfig(1, 1);
         ArmTrajectories trajectories = new ArmTrajectories(config);
-        ArmAngles t0 = new ArmAngles(0.089803, 1.681915);
-        ArmAngles t1 = new ArmAngles(0.316365, 1.147321);
-        Trajectory trajectory = trajectories.onePoint(t0, t1, 90);
+        ArmAngles t0 = new ArmAngles(-0.639248, 1.838205); // safe
+       // ArmAngles t0 = new ArmAngles(0.089803, 1.681915); // mid
+        ArmAngles t1 = new ArmAngles(0.316365, 1.147321); // high
+        Trajectory trajectory = trajectories.onePoint(t0, t1, 135);
 
         XYSeries series1 = new XYSeries("Joints");
         for (double t = 0; t < trajectory.getTotalTimeSeconds(); t += 0.1) {
@@ -100,8 +101,8 @@ public class JointVisualizer {
 
             XYPlot jointXY = (XYPlot) jointChart.getPlot();
             jointXY.setBackgroundPaint(Color.WHITE);
-            jointXY.getDomainAxis().setRange(0, 1.5); // 1.5
-            jointXY.getRangeAxis().setRange(1.0, 2.5); // 1.5
+            jointXY.getDomainAxis().setRange(-1.0, 1.0); // 2
+            jointXY.getRangeAxis().setRange(0.5, 2.5); // 2
 
             ChartPanel jointPanel = new ChartPanel(jointChart) {
                 @Override
@@ -120,8 +121,8 @@ public class JointVisualizer {
 
             XYPlot cartesianXY = (XYPlot) cartesianChart.getPlot();
             cartesianXY.setBackgroundPaint(Color.WHITE);
-            cartesianXY.getDomainAxis().setRange(-0.5, 1.5);
-            cartesianXY.getRangeAxis().setRange(-0.5, 1.5);
+            cartesianXY.getDomainAxis().setRange(-1, 1.5); // 2.5
+            cartesianXY.getRangeAxis().setRange(0, 2.5);
 
             ChartPanel cartesianPanel = new ChartPanel(cartesianChart) {
                 @Override
