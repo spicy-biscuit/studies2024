@@ -9,10 +9,12 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.trajectory.TrapezoidProfile.Constraints;
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.control.FieldRelativeLaundryStick;
 import frc.robot.control.RobotRelativeLaundryStick;
 import frc.robot.subsystems.DirectLaundryDrive;
@@ -36,7 +38,8 @@ public class Robot extends TimedRobot {
     private final LaundryArm m_arm;
 
     public Robot() {
-
+        DataLogManager.start();
+        
         Talon leftMotor = new Talon(0);
         Talon rightMotor = new Talon(1);
         leftMotor.setInverted(true);
@@ -46,8 +49,9 @@ public class Robot extends TimedRobot {
         if (kFieldRelative) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
             AHRS ahrs = new AHRS(gyro);
-            Joystick joystick = new Joystick(0);
-            FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(joystick);
+            // Joystick joystick = new Joystick(0);
+            CommandXboxController controller = new CommandXboxController(0);
+            FieldRelativeLaundryStick stick = new FieldRelativeLaundryStick(controller);
             m_drive = new FieldRelativeLaundryDrive(
                     ahrs,
                     stick::reset,
@@ -56,12 +60,12 @@ public class Robot extends TimedRobot {
                     drive);
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            1, // max velocity
+                            1)); // max accel
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else if (kStabilize) {
             LSM6DSOX_I2C gyro = new LSM6DSOX_I2C();
@@ -77,12 +81,12 @@ public class Robot extends TimedRobot {
                     drive);
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            1, // max velocity (infinite)
+                            1)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         } else {
             Joystick joystick = new Joystick(0);
@@ -94,16 +98,30 @@ public class Robot extends TimedRobot {
 
             CANSparkMax armMotor = new CANSparkMax(2, MotorType.kBrushless);
             ProfiledPIDController armController = new ProfiledPIDController(
-                    10, // P
+                    1.5, // P
                     0, // I
                     0, // D
                     new Constraints(
-                            50, // max velocity (infinite)
-                            20)); // max accel (infinite)
+                            1, // max velocity (infinite)
+                            1)); // max accel (infinite)
             m_arm = new LaundryArm(stick::dump, armController, armMotor);
         }
     }
+    @Override
+    public void autonomousInit() {
+        m_arm.autonomousInit();
+        m_drive.autonomousInit();
+    }
 
+    @Override
+    public void autonomousPeriodic() {
+        if (m_arm.placeFinished()) {
+            m_arm.autonomousPeriodic();
+            m_drive.autonomousPeriodic();
+            return;
+        }
+        m_arm.autonomousPeriodic();
+    }
     @Override
     public void teleopInit() {
         m_drive.enable();
@@ -117,8 +135,8 @@ public class Robot extends TimedRobot {
     }
 
     @Override
-    public void robotPeriodic() {
-        m_drive.periodic();
+    public void teleopPeriodic() {
+        m_drive.teleopPeriodic();
         m_arm.periodic();
     }
 }

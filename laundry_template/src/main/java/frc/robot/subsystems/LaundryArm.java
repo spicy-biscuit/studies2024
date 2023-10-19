@@ -7,6 +7,7 @@ import com.revrobotics.CANSparkMax.IdleMode;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -14,7 +15,8 @@ import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class LaundryArm extends Subsystem {
     // TODO: try lower gear ratios
-    private static final int kGearRatio = 125;
+    private static final int kGearRatio = 15;
+    private static final double kOutput = 1.0;
 
     private final BooleanSupplier m_dumpControl;
     private final ProfiledPIDController m_controller;
@@ -26,6 +28,7 @@ public class LaundryArm extends Subsystem {
 
     private double m_goalTurns;
     private boolean m_enabled;
+    private boolean m_placeFinished;
 
     /**
      * @param dumpControl supplies true to dump the basket
@@ -64,6 +67,26 @@ public class LaundryArm extends Subsystem {
         outputPub.set(0);
     }
 
+    public void autonomousInit() {
+        m_placeFinished = false;
+        dump();
+    }
+
+    public void autonomousPeriodic() {
+        double measurementTurns = getMeasurementTurns();
+        if (Math.abs(m_goalTurns-measurementTurns) < .1) {
+            m_placeFinished = true;
+            level();
+        }
+        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1.0*kOutput, kOutput);
+        m_motor.set(output);
+        outputPub.set(output);
+    }
+
+    public boolean placeFinished() {
+        return m_placeFinished;
+    }
+
     @Override
     public void periodic() {
         if (m_dumpControl.getAsBoolean()) {
@@ -72,10 +95,16 @@ public class LaundryArm extends Subsystem {
             level();
         }
         double measurementTurns = getMeasurementTurns();
-        double output = MathUtil.clamp(m_controller.calculate(measurementTurns, m_goalTurns), -1, 1);
+        double output = m_controller.calculate(measurementTurns, m_goalTurns);
+        double angleOffsetRadians = 0.75;
+        double measurementRadians = Units.rotationsToRadians(measurementTurns) ;
+        double angleRadians = -1.0 * measurementRadians + angleOffsetRadians;
+        double gravityTorque = -0.06 * Math.cos(angleRadians);
+        double uTotal = output + gravityTorque;
+        uTotal = MathUtil.clamp(uTotal, -1.0 * kOutput, kOutput);
         if (m_enabled) {
-            m_motor.set(output);
-            outputPub.set(output);
+            m_motor.set(uTotal);
+            outputPub.set(uTotal);
         }
     }
 
