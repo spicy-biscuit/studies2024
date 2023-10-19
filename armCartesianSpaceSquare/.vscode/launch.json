@@ -4,18 +4,31 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-
     {
-      "type": "wpilib",
-      "name": "WPILib Desktop Debug",
-      "request": "launch",
-      "desktop": true,
+        "type": "java",
+        "name": "JointVisualizer",
+        "request": "launch",
+        "mainClass": "frc.JointVisualizer",
+        "projectName": "armCartesianSpaceSquare"
     },
     {
-      "type": "wpilib",
-      "name": "WPILib roboRIO Debug",
-      "request": "launch",
-      "desktop": false,
+        "type": "java",
+        "name": "FancierVisualizer",
+        "request": "launch",
+        "mainClass": "frc.FancierVisualizer",
+        "projectName": "armCartesianSpaceSquare"
+    },
+    {
+        "type": "wpilib",
+        "name": "WPILib Desktop Debug",
+        "request": "launch",
+        "desktop": true
+    },
+    {
+        "type": "wpilib",
+        "name": "WPILib roboRIO Debug",
+        "request": "launch",
+        "desktop": false
     }
-  ]
+]
 }
