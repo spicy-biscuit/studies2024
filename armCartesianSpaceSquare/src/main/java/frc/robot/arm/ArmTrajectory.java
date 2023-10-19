@@ -1,8 +1,6 @@
 package frc.robot.arm;
 
-
-import frc.robot.armSubsystem.ArmPosition;
-import frc.robot.armSubsystem.ArmInterface;
+import frc.robot.Robot;
 import frc.robot.armMotion.ArmAngles;
 
 import edu.wpi.first.math.trajectory.Trajectory;
@@ -11,7 +9,6 @@ import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 
 public class ArmTrajectory extends CommandBase {
@@ -24,9 +21,8 @@ public class ArmTrajectory extends CommandBase {
         public TrajectoryConfig safeTrajectory = new TrajectoryConfig(9, 1.5);
         public TrajectoryConfig normalTrajectory = new TrajectoryConfig(12, 2);
     }
-
     private final Config m_config = new Config();
-    private final ArmInterface m_arm;
+    private final Robot m_robot;
     // private final ArmPosition m_position;
     // private final boolean m_oscillate;
 
@@ -42,8 +38,8 @@ public class ArmTrajectory extends CommandBase {
     /**
      * Go to the specified position and optionally oscillate when you get there.
      */
-    public ArmTrajectory(ArmInterface arm) {
-        m_arm = arm;
+    public ArmTrajectory(Robot robot) {
+        m_robot = robot;
         // m_position = position;
         // m_oscillate = oscillate;
         m_timer = new Timer();
@@ -54,7 +50,7 @@ public class ArmTrajectory extends CommandBase {
         setpointUpper = inst.getTable("Arm Trajec").getDoubleTopic("Setpoint Upper").publish();
         setpointLower = inst.getTable("Arm Trajec").getDoubleTopic("Setpoint Lower").publish();
 
-        // addRequirements(m_arm.subsystem());
+        // addRequirements(m_robot);
     }
 
     @Override
@@ -66,18 +62,20 @@ public class ArmTrajectory extends CommandBase {
         //     m_arm.setControlSafe();
         // } else {
             trajectoryConfig = m_config.normalTrajectory;
-            m_arm.setControlNormal();
+            // m_arm.setControlNormal();
         // }
+        System.out.println("INTITIAIAKRIEWIERWRIEWERWI");
         m_trajectory = new ArmTrajectories(trajectoryConfig).makeTrajectory(
-                m_arm.getMeasurement(),
-                m_arm.getCubeMode());
+                m_robot.getMeasurement());
     }
 
     public void execute() {
         if (m_trajectory == null) {
+            // System.out.println("Null sad");
             return;
         }
-        ArmAngles measurement = m_arm.getMeasurement();
+        System.out.println("WEORKKRRKKKKKKKKKKKKKKKKKKKKKKKK");
+        ArmAngles measurement = m_robot.getMeasurement();
         double currentUpper = measurement.th2;
         double currentLower = measurement.th1;
 
@@ -87,7 +85,7 @@ public class ArmTrajectory extends CommandBase {
         double desiredUpper = desiredState.poseMeters.getX();
         double desiredLower = desiredState.poseMeters.getY();
 
-        double upperError = desiredUpper - currentUpper;
+        // double upperError = desiredUpper - currentUpper;
 
         // if (m_oscillate && upperError < m_config.oscillatorZone) {
         //     desiredUpper += oscillator(curTime);
@@ -95,7 +93,7 @@ public class ArmTrajectory extends CommandBase {
 
         ArmAngles reference = new ArmAngles(desiredLower, desiredUpper);
 
-        m_arm.setReference(reference);
+        m_robot.setReference(reference);
 
         measurmentX.set(currentUpper);
         measurmentY.set(currentLower);
@@ -105,8 +103,8 @@ public class ArmTrajectory extends CommandBase {
 
     @Override
     public void end(boolean interrupted) {
-        m_arm.setControlNormal();
-        m_arm.setReference(m_arm.getMeasurement());
+        // m_arm.setControlNormal();
+        m_robot.setReference(m_robot.getMeasurement());
     }
 
     @Override
@@ -117,8 +115,8 @@ public class ArmTrajectory extends CommandBase {
         return false;
     }
 
-    private double oscillator(double timeSec) {
-        return m_config.oscillatorScale * Math.sin(2 * Math.PI * m_config.oscillatorFrequencyHz * timeSec);
-    }
+    // private double oscillator(double timeSec) {
+    //     return m_config.oscillatorScale * Math.sin(2 * Math.PI * m_config.oscillatorFrequencyHz * timeSec);
+    // }
 
 }

@@ -12,15 +12,13 @@ import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.wpilibj.AnalogEncoder;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-// import frc.robot.arm.ArmInterface;
-// import frc.robot.arm.ArmPosition;
-import frc.robot.arm.ArmTrajectories;
 import frc.robot.arm.ArmTrajectory;
 import frc.robot.armMotion.ArmAngles;
 import frc.robot.armMotion.ArmKinematics;
-import frc.robot.armSubsystem.ArmInterface;
 
 public class Robot extends TimedRobot {
   public static class Config {
@@ -32,7 +30,7 @@ public class Robot extends TimedRobot {
     public double safeP = 2.5;
     public double safeI = 0;
     public double safeD = 0;
-    public double normalLowerP = 0.3;
+    public double normalLowerP = 0.6;
     public double normalLowerI = 0;
     public double normalLowerD = 0.1;
     public double normalUpperP = 4;
@@ -44,10 +42,7 @@ public class Robot extends TimedRobot {
   private final Config m_config = new Config();
 
   private Command m_autonomousCommand;
-  // private FRCNEO lowerArmMotor;
-  // private FRCNEO upperArmMotor;
   private ArmTrajectory m_trajec;
-  private ArmInterface m_arm;
   private ArmKinematics m_armKinematicsM;
   private LinearFilter m_lowerMeasurementFilter;
   private LinearFilter m_upperMeasurementFilter;
@@ -66,7 +61,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
-    m_trajec = new ArmTrajectory(m_arm);
+    m_trajec = new ArmTrajectory(this);
     m_armKinematicsM = new ArmKinematics(m_config.kLowerArmLengthM, m_config.kUpperArmLengthM);
     m_lowerMeasurementFilter = LinearFilter.singlePoleIIR(m_config.filterTimeConstantS, m_config.filterPeriodS);
     m_upperMeasurementFilter = LinearFilter.singlePoleIIR(m_config.filterTimeConstantS, m_config.filterPeriodS);
@@ -75,7 +70,7 @@ public class Robot extends TimedRobot {
     m_lowerController.setTolerance(m_config.tolerance);
     m_upperController.setTolerance(m_config.tolerance);
 
-    lowerArmMotor = new FRCNEO.FRCNEOBuilder(30)
+    lowerArmMotor = new FRCNEO.FRCNEOBuilder(4)
         .withInverted(false)
         .withSensorPhase(false)
         .withTimeout(10)
@@ -86,7 +81,7 @@ public class Robot extends TimedRobot {
         .withNeutralMode(IdleMode.kBrake)
         .build();
 
-    upperArmMotor = new FRCNEO.FRCNEOBuilder(1)
+    upperArmMotor = new FRCNEO.FRCNEOBuilder(30)
         .withInverted(false)
         .withSensorPhase(false)
         .withTimeout(10)
@@ -134,9 +129,12 @@ public class Robot extends TimedRobot {
     ArmAngles measurement = getMeasurement();
     u1 = m_lowerController.calculate(measurement.th1, m_reference.th1);
      u2 = m_upperController.calculate(measurement.th2, m_reference.th2);
-    System.out.println("lower: " +measurement.th1 + " " + m_reference.th1);
-    System.out.println("upper: " +measurement.th2 + " " + m_reference.th2);
-    System.out.println("OUTPUT: " +u1 + " " + u2);
+    SmartDashboard.putNumber("Lower Encoder: ", measurement.th1);
+    SmartDashboard.putNumber("Lower Ref: ", m_reference.th1);
+    SmartDashboard.putNumber("Upper Encoder: ", measurement.th2);
+    SmartDashboard.putNumber("Upper Ref: ", m_reference.th2);
+    SmartDashboard.putNumber("Output Upper: ", u1);
+    SmartDashboard.putNumber("Output Lower: ", u2);
     CommandScheduler.getInstance().run();
   }
 
@@ -183,6 +181,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
+    m_trajec.initialize();
     m_lowerController = new PIDController(m_config.normalLowerP, m_config.normalLowerI, m_config.normalLowerD);
     m_upperController = new PIDController(m_config.normalUpperP, m_config.normalUpperI, m_config.normalUpperD);
     m_lowerController.setTolerance(m_config.tolerance);
@@ -196,7 +195,7 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    lowerArmMotor.set(u1);
+    lowerArmMotor.set(soften(u1));
     upperArmMotor.set(u2);
   }
 
@@ -211,6 +210,17 @@ public class Robot extends TimedRobot {
 
   @Override
   public void testPeriodic() {
+    XboxController controller = new XboxController(0);
+    upperArmMotor.set(0);
+    lowerArmMotor.set(0);
+    if (controller.getAButton()) {
+    lowerArmMotor.set(.05);}
+    if (controller.getBButton()) {
+    upperArmMotor.set(.1);}
+    if (controller.getXButton()) {
+    lowerArmMotor.set(-.05);}
+    if (controller.getYButton()) {
+    upperArmMotor.set(-.1);}
   }
 
   @Override

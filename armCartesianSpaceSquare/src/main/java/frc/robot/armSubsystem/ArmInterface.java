@@ -1,30 +1,30 @@
 package frc.robot.armSubsystem;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Subsystem;
+// import edu.wpi.first.wpilibj2.command.Subsystem;
 import frc.robot.armMotion.ArmAngles;
 
 public interface ArmInterface {
 
-    Subsystem subsystem();
+    // Subsystem subsystem();
 
-    boolean getCubeMode();
+    // boolean getCubeMode();
 
-    void setCubeMode(boolean b);
-
+    // void setCubeMode(boolean b);
+// 
     void setReference(ArmAngles reference);
 
     ArmAngles getMeasurement();
 
-    void setControlNormal();
+    // void setControlNormal();
 
-    void setControlSafe();
-
+    // void setControlSafe();
+// 
     void close();
 
-    void setUpperSpeed(double x);
+    // void setUpperSpeed(double x);
 
-    void setLowerSpeed(double x);
+    // void setLowerSpeed(double x);
 
-    void setDefaultCommand(Command command);
+    // void setDefaultCommand(Command command);
 }
