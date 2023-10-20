@@ -1,4 +1,4 @@
-package org.team100;
+package frc.robot.org.team100.planning;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
