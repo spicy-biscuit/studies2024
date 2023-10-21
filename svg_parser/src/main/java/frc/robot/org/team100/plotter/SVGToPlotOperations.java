@@ -5,9 +5,13 @@ import java.util.List;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.spline.CubicHermiteSpline;
+import edu.wpi.first.math.spline.PoseWithCurvature;
+import edu.wpi.first.math.spline.Spline;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.math.trajectory.TrajectoryParameterizer;
 
 /**
  * A collection of plot operations made from SVG path operators.
@@ -67,24 +71,18 @@ public class SVGToPlotOperations {
     }
 
     private void lineScaled(double x, double y, boolean penDown) {
-        Rotation2d rot = new Rotation2d(x - this.currentX, y - this.currentY);
-        Pose2d start = new Pose2d(this.currentX, this.currentY, rot);
-        Pose2d end = new Pose2d(x, y, rot);
+        // a line is a curve with control points in the right places.
 
-        Trajectory trajectory = null;
+        // so actually all that matters is the direction.
 
-        if (end.minus(start).getTranslation().getNorm() < 0.1) {
-            // too short, trajectory generator barfs
-            System.out.println("using short trajectory");
-            trajectory = shortTrajectory(start, end);
-        } else {
-            trajectory = TrajectoryGenerator.generateTrajectory(
-                    start, List.of(), end, new TrajectoryConfig(10, 0.1));
-        }
-        operations.add(new Operation(penDown, trajectory));
+        double scale = 0.1;
 
-        this.currentX = x;
-        this.currentY = y;
+        double x0dot = x - this.currentX;
+        double y0dot = y - this.currentY;
+        double x1dot = x0dot;
+        double y1dot = y0dot;
+
+        curveHermite(x, y, scale * x0dot, scale * y0dot, scale * x1dot, scale * y1dot, penDown);
     }
 
     public void curve(double rawX, double rawY, double rawX1, double rawY1, double rawX2, double rawY2) {
@@ -99,23 +97,74 @@ public class SVGToPlotOperations {
                 Math.abs(x2) > ABS_MAX || Math.abs(y2) > ABS_MAX)
             throw new IllegalArgumentException(String.format(
                     "args too big %f %f %f %f %f %f", rawX, rawY, rawX1, rawY1, rawX2, rawY2));
-        curveScaled(x, y, x1, y1, x2, y2);
+        curveScaled(x, y, x1, y1, x2, y2, true);
     }
 
-    private void curveScaled(double x, double y, double x1, double y1, double x2, double y2) {
+    private void curveScaled(double x, double y, double x1, double y1, double x2, double y2, boolean penDown) {
         // convert the control points into Hermite derivatives
         double x0dot = (x1 - this.currentX) / 3;
         double y0dot = (y1 - this.currentY) / 3;
         double x1dot = (x - x2) / 3;
         double y1dot = (y - y2) / 3;
-        Rotation2d r0 = new Rotation2d(x0dot, y0dot);
-        Rotation2d r1 = new Rotation2d(x1dot, y1dot);
-        Pose2d start = new Pose2d(this.currentX, this.currentY, r0);
-        Pose2d end = new Pose2d(x, y, r1);
-        Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
-                start, List.of(), end, new TrajectoryConfig(10, 0.1));
 
-        operations.add(new Operation(true, trajectory));
+        curveHermite(x, y, x0dot, y0dot, x1dot, y1dot, penDown);
+    }
+
+    /** any curve or line */
+    private void curveHermite(
+            double x, double y,
+            double x0dot, double y0dot,
+            double x1dot, double y1dot,
+            boolean penDown) {
+
+        System.out.printf("hermite curve %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", this.currentX, this.currentY, x, y, x0dot, y0dot, x1dot, y1dot);
+
+        Rotation2d rot = new Rotation2d(x - this.currentX, y - this.currentY);
+        Pose2d start = new Pose2d(this.currentX, this.currentY, rot);
+        Pose2d end = new Pose2d(x, y, rot);
+        // this constant has uh no actual meaning
+        if (end.minus(start).getTranslation().getNorm() < 0.2) {
+            // too short, trajectory generator barfs
+            System.out.println("using short trajectory");
+            Trajectory trajectory = shortTrajectory(start, end);
+            operations.add(new Operation(penDown, trajectory));
+
+            this.currentX = x;
+            this.currentY = y;
+            return;
+        }
+
+        TrajectoryConfig config = new TrajectoryConfig(10, 0.1);
+        // i have no idea why this is 9
+        final double scale = 9;
+
+        double[] xInitialControlVector = new double[] { this.currentX, scale * x0dot };
+        double[] yInitialControlVector = new double[] { this.currentY, scale * y0dot };
+        double[] xFinalControlVector = new double[] { x, scale * x1dot };
+        double[] yFinalControlVector = new double[] { y, scale * y1dot };
+
+        System.out.printf("curve %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n",
+                x, y, x0dot, y0dot, x1dot, y1dot);
+
+        CubicHermiteSpline spline = new CubicHermiteSpline(
+                xInitialControlVector,
+                xFinalControlVector,
+                yInitialControlVector,
+                yFinalControlVector);
+
+        Spline[] splines = new Spline[] { spline };
+        List<PoseWithCurvature> points = TrajectoryGenerator.splinePointsFromSplines(splines);
+
+        Trajectory trajectory = TrajectoryParameterizer.timeParameterizeTrajectory(
+                points,
+                config.getConstraints(),
+                config.getStartVelocity(),
+                config.getEndVelocity(),
+                config.getMaxVelocity(),
+                config.getMaxAcceleration(),
+                config.isReversed());
+
+        operations.add(new Operation(penDown, trajectory));
 
         this.currentX = x;
         this.currentY = y;

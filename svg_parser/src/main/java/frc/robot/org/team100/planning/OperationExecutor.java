@@ -43,7 +43,6 @@ public class OperationExecutor {
         frame.setVisible(true);
     }
 
-    
     public void executeTrajectory(boolean penDown, Trajectory trajectory) {
         Color color = penDown ? Color.BLACK : Color.GREEN;
 
@@ -60,19 +59,19 @@ public class OperationExecutor {
         fixScales();
     }
 
-        /** Make the x and y scales the same, and autorange. */
-        private void fixScales() {
-            xy.getDomainAxis().setAutoRange(true);
-            xy.getRangeAxis().setAutoRange(true);
-            double domainLength = xy.getDomainAxis().getRange().getLength();
-            double rangeLength = xy.getRangeAxis().getRange().getLength();
-            if (domainLength > rangeLength) {
-                double rangeCenter = xy.getRangeAxis().getRange().getCentralValue();
-                xy.getRangeAxis().setRange(rangeCenter - domainLength / 2, rangeCenter + domainLength / 2);
-            } else {
-                double domainCenter = xy.getDomainAxis().getRange().getCentralValue();
-                xy.getDomainAxis().setRange(domainCenter - rangeLength / 2, domainCenter + rangeLength / 2);
-            }
+    /** Make the x and y scales the same, and autorange. */
+    private void fixScales() {
+        xy.getDomainAxis().setAutoRange(true);
+        xy.getRangeAxis().setAutoRange(true);
+        double domainLength = xy.getDomainAxis().getRange().getLength();
+        double rangeLength = xy.getRangeAxis().getRange().getLength();
+        if (domainLength > rangeLength) {
+            double rangeCenter = xy.getRangeAxis().getRange().getCentralValue();
+            xy.getRangeAxis().setRange(rangeCenter - domainLength / 2, rangeCenter + domainLength / 2);
+        } else {
+            double domainCenter = xy.getDomainAxis().getRange().getCentralValue();
+            xy.getDomainAxis().setRange(domainCenter - rangeLength / 2, domainCenter + rangeLength / 2);
         }
-    
+    }
+
 }
