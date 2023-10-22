@@ -44,6 +44,7 @@ public class SvgReader {
                 handleItem(item);
             }
         }
+        transformer.end();
     }
 
     private NodeList getPaths() {
