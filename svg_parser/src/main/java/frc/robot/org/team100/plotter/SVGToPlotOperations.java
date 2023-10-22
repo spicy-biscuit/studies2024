@@ -110,6 +110,17 @@ public class SVGToPlotOperations {
         curveHermite(x, y, x0dot, y0dot, x1dot, y1dot, penDown);
     }
 
+    // TODO move this
+    private final ArrayList<Spline> splines = new ArrayList<>();
+    // note since the CubicHermiteSpline doesn't expose the control
+    // vectors and i don't want to deal with extracting them
+    // from the coefficient matrix, i'll just remember them.
+    private final ArrayList<double[]> xFinals = new ArrayList<>();
+    private final ArrayList<double[]> yFinals = new ArrayList<>();
+    
+    // TODO this isn't totally right, the intermediate moves don't work with pen up.
+    private boolean queuedPenDown;
+
     /** any curve or line */
     private void curveHermite(
             double x, double y,
@@ -117,7 +128,8 @@ public class SVGToPlotOperations {
             double x1dot, double y1dot,
             boolean penDown) {
 
-        System.out.printf("hermite curve %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", this.currentX, this.currentY, x, y, x0dot, y0dot, x1dot, y1dot);
+        System.out.printf("hermite curve %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", this.currentX,
+                this.currentY, x, y, x0dot, y0dot, x1dot, y1dot);
 
         Rotation2d rot = new Rotation2d(x - this.currentX, y - this.currentY);
         Pose2d start = new Pose2d(this.currentX, this.currentY, rot);
@@ -126,6 +138,9 @@ public class SVGToPlotOperations {
         if (end.minus(start).getTranslation().getNorm() < 0.2) {
             // too short, trajectory generator barfs
             System.out.println("using short trajectory");
+            
+            renderSplines(queuedPenDown);
+
             Trajectory trajectory = shortTrajectory(start, end);
             operations.add(new Operation(penDown, trajectory));
 
@@ -134,7 +149,6 @@ public class SVGToPlotOperations {
             return;
         }
 
-        TrajectoryConfig config = new TrajectoryConfig(10, 0.1);
         // i have no idea why this is 9
         final double scale = 9;
 
@@ -151,10 +165,59 @@ public class SVGToPlotOperations {
                 xFinalControlVector,
                 yInitialControlVector,
                 yFinalControlVector);
+        // Spline[] splines = new Spline[] { spline };
 
-        Spline[] splines = new Spline[] { spline };
-        List<PoseWithCurvature> points = TrajectoryGenerator.splinePointsFromSplines(splines);
+        if (splines.isEmpty() ||
+                (penDown == queuedPenDown 
+                && almostEqual(xInitialControlVector, xFinals.get(xFinals.size() - 1))
+                        && almostEqual(yInitialControlVector, yFinals.get(yFinals.size() - 1)))) {
+            // if there is no previous spline or if the initial control vector
+            // matches the previous one then just add the spline to the list
+            // and do nothing else.
 
+            splines.add(spline);
+            xFinals.add(xFinalControlVector);
+            yFinals.add(yFinalControlVector);
+
+        } else {
+            // in this case the new spline doesn't match the old one
+            // so we should spit out the old ones and add the new one to the list.
+
+            renderSplines(queuedPenDown);
+
+            splines.add(spline);
+            xFinals.add(xFinalControlVector);
+            yFinals.add(yFinalControlVector);
+            queuedPenDown = penDown;
+
+        }
+
+        // TODO: this logic will leave the last spline in the queue without being
+        // parameterized
+        // so catch it somehow
+
+        this.currentX = x;
+        this.currentY = y;
+    }
+
+    private boolean almostEqual(double[] a, double[] b) {
+        if (a.length != b.length)
+            return false;
+        for (int i = 0; i < a.length; ++i) {
+            if (Math.abs(a[i] - b[i]) > 0.001)
+                return false;
+        }
+        return true;
+    }
+
+    private final TrajectoryConfig config = new TrajectoryConfig(10, 0.1);
+
+    /** Convert enqueued splines into an operation and empty the spline list */
+    private void renderSplines(boolean penDown) {
+        if (splines.isEmpty())
+            return;
+
+        List<PoseWithCurvature> points = TrajectoryGenerator.splinePointsFromSplines(splines.toArray(new Spline[0]));
         Trajectory trajectory = TrajectoryParameterizer.timeParameterizeTrajectory(
                 points,
                 config.getConstraints(),
@@ -165,9 +228,8 @@ public class SVGToPlotOperations {
                 config.isReversed());
 
         operations.add(new Operation(penDown, trajectory));
+        splines.clear();
 
-        this.currentX = x;
-        this.currentY = y;
     }
 
     public void close() {

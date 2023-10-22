@@ -98,19 +98,23 @@ public class SvgTest {
         }
 
         // let the user look at the picture.
-        Thread.sleep(10000);
+        Thread.sleep(1000);
 
         // so this circle should actually be a circle
         List<Operation> oplist = ops.getOperations();
         Translation2d c = new Translation2d(12, -12);
-        for (int i = 1; i < 5; ++i) {
+
+        for (int i = 1; i < oplist.size(); ++i) {
             Trajectory trajectory = oplist.get(i).getTrajectory();
+            System.out.println("======TRAJECTORY======");
+            System.out.println(trajectory);
 
             for (double t = 0; t < trajectory.getTotalTimeSeconds(); t += 0.1) {
                 Trajectory.State state = trajectory.sample(t);
                 Pose2d pose = state.poseMeters;
                 Translation2d tr = pose.getTranslation();
                 double norm = tr.minus(c).getNorm();
+                System.out.println("======SAMPLE======");
                 System.out.printf("tr %s d %f\n", tr, norm);
                 // so this is within 1/3000th of a circle 
                 // which seems good enough
