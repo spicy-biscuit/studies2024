@@ -33,6 +33,7 @@ public class Plot extends Command {
 
     private static final double xScale = 1;
     private static final double yScale = 1;
+    private static final double tolerance = 0.01;
 
     private final SVGToPlotOperations ops;
 
@@ -44,7 +45,7 @@ public class Plot extends Command {
 
     public Plot() {
         // read the file once
-        ops = new SVGToPlotOperations(xScale, yScale);
+        ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         try {
             new SvgReader(stream("subpop.svg"), ops).run();
         } catch (IOException e) {

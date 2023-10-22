@@ -32,8 +32,9 @@ public class SvgTest {
         System.out.println("start");
         double xScale = 1;
         double yScale = -1;
+        double tolerance = 0.01;
 
-        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale);
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         SvgReader reader = new SvgReader(stream("center_mark.svg"), ops);
 
         reader.run();
@@ -44,11 +45,11 @@ public class SvgTest {
         // this would be in the command execute() method.
 
         for (Operation op : ops.getOperations()) {
-            exec.executeTrajectory(op.isPenDown(), op.getTrajectory());
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
         }
 
         // let the user look at the picture.
-        Thread.sleep(1000);
+        Thread.sleep(3000);
         System.out.println("done");
     }
 
@@ -57,8 +58,9 @@ public class SvgTest {
         System.out.println("start");
         double xScale = 0.00025;
         double yScale = -0.00025;
+        double tolerance = 0.1;
 
-        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale);
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         SvgReader reader = new SvgReader(stream("hat.svg"), ops);
 
         reader.run();
@@ -69,21 +71,23 @@ public class SvgTest {
         // this would be in the command execute() method.
 
         for (Operation op : ops.getOperations()) {
-            exec.executeTrajectory(op.isPenDown(), op.getTrajectory());
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
         }
 
         // let the user look at the picture.
-        Thread.sleep(10000);
+        Thread.sleep(3000);
         System.out.println("done");
     }
 
+    /** Shows curve/curve splicing. */
     @Test
     void testSvg3() throws InterruptedException, IOException {
         System.out.println("start");
         double xScale = 1;
         double yScale = -1;
+        double tolerance = 0.01;
 
-        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale);
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         SvgReader reader = new SvgReader(stream("circle.svg"), ops);
 
         reader.run();
@@ -94,11 +98,11 @@ public class SvgTest {
         // this would be in the command execute() method.
 
         for (Operation op : ops.getOperations()) {
-            exec.executeTrajectory(op.isPenDown(), op.getTrajectory());
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
         }
 
         // let the user look at the picture.
-        Thread.sleep(1000);
+        Thread.sleep(3000);
 
         // so this circle should actually be a circle
         List<Operation> oplist = ops.getOperations();
@@ -130,8 +134,9 @@ public class SvgTest {
         System.out.println("start");
         double xScale = 1;
         double yScale = -1;
+        double tolerance = 0.01;
 
-        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale);
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         SvgReader reader = new SvgReader(stream("penrose_triangle.svg"), ops);
 
         reader.run();
@@ -142,11 +147,11 @@ public class SvgTest {
         // this would be in the command execute() method.
 
         for (Operation op : ops.getOperations()) {
-            exec.executeTrajectory(op.isPenDown(), op.getTrajectory());
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
         }
 
         // let the user look at the picture.
-        Thread.sleep(1000);
+        Thread.sleep(3000);
         System.out.println("done");
     }
 
@@ -155,8 +160,9 @@ public class SvgTest {
         System.out.println("start");
         double xScale = 1;
         double yScale = -1;
+        double tolerance = 0.01;
 
-        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale);
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
         SvgReader reader = new SvgReader(stream("subpop.svg"), ops);
         reader.run();
 
@@ -166,11 +172,38 @@ public class SvgTest {
         // this would be in the command execute() method.
 
         for (Operation op : ops.getOperations()) {
-            exec.executeTrajectory(op.isPenDown(), op.getTrajectory());
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
         }
 
         // let the user look at the picture.
-        Thread.sleep(1000);
+        Thread.sleep(3000);
+        System.out.println("done");
+    }
+
+    /**  shows curve/line splicing */
+    @Test
+    void testSvg6() throws InterruptedException, IOException {
+        System.out.println("start");
+        double xScale = 1;
+        double yScale = -1;
+        double tolerance = 0.01;
+
+        SVGToPlotOperations ops = new SVGToPlotOperations(xScale, yScale, tolerance);
+        SvgReader reader = new SvgReader(stream("tangent.svg"), ops);
+        reader.run();
+
+        // this would be in the command initialize() method
+        OperationExecutor exec = new OperationExecutor();
+
+        // this would be in the command execute() method.
+
+        // this is slower than the others to see the little straightaways
+        for (Operation op : ops.getOperations()) {
+            exec.executeTrajectory(op.isPenDown(), op.getTrajectory(), 1);
+        }
+
+        // let the user look at the picture.
+        Thread.sleep(3000);
         System.out.println("done");
     }
 }
