@@ -55,7 +55,6 @@ public class VisionDataProvider extends Subsystem implements TableEventListener 
     private final Telemetry t = Telemetry.get();
 
     private final Supplier<Pose2d> poseSupplier;
-    private final DoublePublisher timestampPublisher;
     private final ObjectMapper objectMapper;
     private final SwerveDrivePoseEstimator poseEstimator;
     /** Discard results further than this from the previous one. */
@@ -75,12 +74,12 @@ public class VisionDataProvider extends Subsystem implements TableEventListener 
         this.poseEstimator = poseEstimator;
         this.poseSupplier = poseSupplier;
 
-        NetworkTableInstance inst = NetworkTableInstance.getDefault();
-        inst.startServer("example server");
-        NetworkTable example_table = inst.getTable("example_table");
-        timestampPublisher = example_table.getDoubleTopic("timestamp").publish();
         objectMapper = new ObjectMapper(new MessagePackFactory());
-        NetworkTable vision_table = inst.getTable("Vision");
+    }
+
+    /** Start listening for updates. */
+    public void enable() {
+        NetworkTable vision_table = NetworkTableInstance.getDefault().getTable("Vision");
         // Listen to ALL the updates in the vision table. :-)
         vision_table.addListener(EnumSet.of(NetworkTableEvent.Kind.kValueAll), this);
     }
@@ -97,13 +96,6 @@ public class VisionDataProvider extends Subsystem implements TableEventListener 
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Update the timestamp on the NetworkTable
-     */
-    public void updateTimestamp() {
-        timestampPublisher.set(Timer.getFPGATimestamp());
     }
 
     /**

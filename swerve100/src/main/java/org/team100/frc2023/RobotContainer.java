@@ -172,7 +172,7 @@ public class RobotContainer {
                 layout,
                 poseEstimator,
                 poseEstimator::getEstimatedPosition);
-        visionDataProvider.updateTimestamp(); // this is just to keep lint from complaining
+        visionDataProvider.enable();
 
         SwerveLocal swerveLocal = new SwerveLocal(experiments, speedLimits, m_kinematics, m_modules);
 

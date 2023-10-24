@@ -131,7 +131,7 @@ public class DriveToRetroReflectiveTape extends Command {
 
             m_robotDrive.setDesiredState(refState);
 
-            // publish what we did
+            // log what we did
             t.log("/Retro Tape/Measurment X", xMeasurment);
             t.log("/Retro Tape/Measurment Y", yMeasurment);
             t.log("/Retro Tape/Tag View", true);
