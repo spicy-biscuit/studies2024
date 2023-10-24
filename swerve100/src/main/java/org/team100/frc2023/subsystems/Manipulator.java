@@ -3,11 +3,10 @@ package org.team100.frc2023.subsystems;
 import org.team100.lib.config.Identity;
 import org.team100.lib.motor.FRCTalonSRX;
 import org.team100.lib.motor.FRCTalonSRX.FRCTalonSRXBuilder;
+import org.team100.lib.telemetry.Telemetry;
 
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 
-import edu.wpi.first.util.sendable.SendableBuilder;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 
 public class Manipulator extends Subsystem implements ManipulatorInterface {
@@ -47,6 +46,8 @@ public class Manipulator extends Subsystem implements ManipulatorInterface {
         }
     }
 
+    private final Telemetry t = Telemetry.get();
+
     private final FRCTalonSRX m_motor;
    
     private Manipulator() {
@@ -60,22 +61,17 @@ public class Manipulator extends Subsystem implements ManipulatorInterface {
                 .build();
         m_motor.configPeakCurrentLimit(30);
         m_motor.configPeakCurrentDuration(1000);
-        SmartDashboard.putData("Manipulator", this);
     }
 
     public void set(double speed1_1, int currentLimit) {
         m_motor.configPeakCurrentLimit(currentLimit);
         m_motor.set(speed1_1);
+        t.log("/Manipulator/Output Current amps",  m_motor.getStatorCurrent());
+        t.log("/Manipulator/Input Current amps", m_motor.getSupplyCurrent());
     }
 
     public double getStatorCurrent() {
         return m_motor.getStatorCurrent();
-    }
-
-    public void initSendable(SendableBuilder builder) {
-        super.initSendable(builder);
-        builder.addDoubleProperty("Output Current", () -> m_motor.getStatorCurrent(), null);
-        builder.addDoubleProperty("Input Current", () -> m_motor.getSupplyCurrent(), null);
     }
 
     @Override
