@@ -1,4 +1,4 @@
-package org.team100.telemetry;
+package org.team100.lib.telemetry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,26 +35,26 @@ public class Telemetry {
     }
 
     public void log(String key, boolean val) {
-        log(key, k -> inst.getBooleanTopic(k).publish(), BooleanPublisher.class).set(val);
+        pub(key, k -> inst.getBooleanTopic(k).publish(), BooleanPublisher.class).set(val);
     }
 
     public void log(String key, double val) {
-        log(key, k -> inst.getDoubleTopic(k).publish(), DoublePublisher.class).set(val);
+        pub(key, k -> inst.getDoubleTopic(k).publish(), DoublePublisher.class).set(val);
     }
 
     public void log(String key, long val) {
-        log(key, k -> inst.getIntegerTopic(k).publish(), IntegerPublisher.class).set(val);
+        pub(key, k -> inst.getIntegerTopic(k).publish(), IntegerPublisher.class).set(val);
     }
 
     public void log(String key, String val) {
-        log(key, k -> inst.getStringTopic(k).publish(), StringPublisher.class).set(val);
+        pub(key, k -> inst.getStringTopic(k).publish(), StringPublisher.class).set(val);
     }
 
     public void log(String key, String[] val) {
-        log(key, k -> inst.getStringArrayTopic(k).publish(), StringArrayPublisher.class).set(val);
+        pub(key, k -> inst.getStringArrayTopic(k).publish(), StringArrayPublisher.class).set(val);
     }
 
-    private <T extends Publisher> T log(String key, Function<String, Publisher> fn, Class<T> pubClass) {
+    private <T extends Publisher> T pub(String key, Function<String, Publisher> fn, Class<T> pubClass) {
         Publisher publisher = pubs.computeIfAbsent(valid(key), fn);
         if (!pubClass.isInstance(publisher))
             throw new IllegalArgumentException("value type clash");

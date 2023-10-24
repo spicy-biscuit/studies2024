@@ -1,4 +1,4 @@
-package org.team100.telemetry;
+package org.team100.lib.telemetry;
 
 import java.io.IOException;
 import java.nio.file.Paths;
