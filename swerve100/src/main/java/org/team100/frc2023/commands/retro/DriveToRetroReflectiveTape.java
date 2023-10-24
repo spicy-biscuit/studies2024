@@ -11,15 +11,13 @@ import org.team100.lib.motion.drivetrain.SwerveState;
 import org.team100.lib.profile.MotionProfile;
 import org.team100.lib.profile.MotionProfileGenerator;
 import org.team100.lib.profile.MotionState;
+import org.team100.lib.telemetry.Telemetry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.RawSubscriber;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -44,11 +42,15 @@ public class DriveToRetroReflectiveTape extends Command {
 
     private final Config m_config = new Config();
 
+    private final Telemetry t = Telemetry.get();
+
     private final SwerveDriveSubsystem m_robotDrive;
     private final SpeedLimits m_speedLimits;
     private final LinearFilter xFilter;
     private final LinearFilter yFilter;
     private final ObjectMapper object_mapper;
+
+    private final RawSubscriber tapeSubscriber;
 
     // these are robot-frame states not global, so the goal state is a constant.
     private final MotionState m_xGoal;
@@ -69,6 +71,9 @@ public class DriveToRetroReflectiveTape extends Command {
         object_mapper = new ObjectMapper(new MessagePackFactory());
         m_xGoal = new MotionState(m_config.xGoal, 0);
         m_yGoal = new MotionState(m_config.yGoal, 0);
+
+        tapeSubscriber = NetworkTableInstance.getDefault().getTable("Retro Vision").getRawTopic("tapes")
+                .subscribe("raw", new byte[0]);
     }
 
     @Override
@@ -79,7 +84,7 @@ public class DriveToRetroReflectiveTape extends Command {
             Tapes tapes = object_mapper.readValue(data, Tapes.class);
             if (tapes.tapes.isEmpty()) {
                 m_robotDrive.truncate();
-                tagView.set(false);
+                t.log("/Retro Tape/Tag View", false);
                 return;
             }
 
@@ -127,9 +132,9 @@ public class DriveToRetroReflectiveTape extends Command {
             m_robotDrive.setDesiredState(refState);
 
             // publish what we did
-            measurmentX.set(xMeasurment);
-            measurmentY.set(yMeasurment);
-            tagView.set(true);
+            t.log("/Retro Tape/Measurment X", xMeasurment);
+            t.log("/Retro Tape/Measurment Y", yMeasurment);
+            t.log("/Retro Tape/Tag View", true);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -147,14 +152,4 @@ public class DriveToRetroReflectiveTape extends Command {
     public void end(boolean interrupted) {
         m_robotDrive.truncate();
     }
-
-    //////////////////////////////////////////////////////////////
-
-    private final NetworkTableInstance inst = NetworkTableInstance.getDefault();
-    private final NetworkTable table = inst.getTable("Retro Tape");
-    private final DoublePublisher measurmentX = table.getDoubleTopic("Measurment X").publish();
-    private final DoublePublisher measurmentY = table.getDoubleTopic("Measurment Y").publish();
-    private final BooleanPublisher tagView = table.getBooleanTopic("Tag View").publish();
-    private final NetworkTable vision = inst.getTable("Retro Vision");
-    private final RawSubscriber tapeSubscriber = vision.getRawTopic("tapes").subscribe("raw", new byte[0]);
 }
