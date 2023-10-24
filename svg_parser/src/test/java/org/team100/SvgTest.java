@@ -9,15 +9,15 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.team100.planning.OperationExecutor;
+import org.team100.planning.SvgReader;
+import org.team100.plotter.Operation;
+import org.team100.plotter.SVGToPlotOperations;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.Filesystem;
-import frc.robot.org.team100.planning.OperationExecutor;
-import frc.robot.org.team100.planning.SvgReader;
-import frc.robot.org.team100.plotter.Operation;
-import frc.robot.org.team100.plotter.SVGToPlotOperations;
 
 public class SvgTest {
 
