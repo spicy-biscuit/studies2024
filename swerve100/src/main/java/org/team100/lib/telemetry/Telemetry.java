@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoubleArrayPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -40,6 +41,10 @@ public class Telemetry {
 
     public void log(String key, double val) {
         pub(key, k -> inst.getDoubleTopic(k).publish(), DoublePublisher.class).set(val);
+    }
+
+    public void log(String key, double[] val) {
+        pub(key, k -> inst.getDoubleArrayTopic(k).publish(), DoubleArrayPublisher.class).set(val);
     }
 
     public void log(String key, long val) {
