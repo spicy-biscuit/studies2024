@@ -51,27 +51,28 @@ public class Manipulator extends Subsystem implements ManipulatorInterface {
     private final FRCTalonSRX m_motor;
    
     private Manipulator() {
-        m_motor = new FRCTalonSRXBuilder(10)
-                .withInverted(false)
-                .withSensorPhase(false)
-                .withPeakOutputForward(1)
-                .withPeakOutputReverse(-1)
-                .withNeutralMode(NeutralMode.Brake)
-                .withCurrentLimitEnabled(true)
-                .build();
-        m_motor.configPeakCurrentLimit(30);
-        m_motor.configPeakCurrentDuration(1000);
+        var b = new FRCTalonSRXBuilder(10);
+        b.inverted = false;
+        b.useInvertType = false;
+        b.sensorPhase = false;
+        b.peakOutputForward =  1;
+        b.peakOutputReverse = -1;
+        b.neutralMode = NeutralMode.Brake;
+        b.currentLimitEnabled = true;
+        m_motor =b.build();
+        m_motor.motor.configPeakCurrentLimit(30);
+        m_motor.motor.configPeakCurrentDuration(1000);
     }
 
     public void set(double speed1_1, int currentLimit) {
-        m_motor.configPeakCurrentLimit(currentLimit);
-        m_motor.set(speed1_1);
-        t.log("/Manipulator/Output Current amps",  m_motor.getStatorCurrent());
-        t.log("/Manipulator/Input Current amps", m_motor.getSupplyCurrent());
+        m_motor.motor.configPeakCurrentLimit(currentLimit);
+        m_motor.motor.set(speed1_1);
+        t.log("/Manipulator/Output Current amps",  m_motor.motor.getStatorCurrent());
+        t.log("/Manipulator/Input Current amps", m_motor.motor.getSupplyCurrent());
     }
 
     public double getStatorCurrent() {
-        return m_motor.getStatorCurrent();
+        return m_motor.motor.getStatorCurrent();
     }
 
     @Override
