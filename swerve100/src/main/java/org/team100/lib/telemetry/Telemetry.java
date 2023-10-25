@@ -17,7 +17,9 @@ import edu.wpi.first.wpilibj.DataLogManager;
 /**
  * Simple logging wrapper.
  * 
- * Use keys of the form "/foo/bar".
+ * Use keys of the form "/foo/bar"; the slashes separate levels in the tree.
+ * 
+ * Don't use a slash for any other reason, e.g. for "meters per second" don't say "m/s" say "m_s"
  */
 public class Telemetry {
     private static final Telemetry instance = new Telemetry();
