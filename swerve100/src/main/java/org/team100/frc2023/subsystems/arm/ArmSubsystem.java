@@ -1,13 +1,15 @@
 package org.team100.frc2023.subsystems.arm;
 
 import org.team100.lib.motion.arm.ArmKinematics;
-import org.team100.lib.motor.FRCNEO;
 import org.team100.lib.telemetry.Telemetry;
 import org.team100.lib.config.Identity;
 import org.team100.lib.controller.State100;
 import org.team100.lib.motion.arm.ArmAngles;
 
+import com.revrobotics.SparkMaxAnalogSensor;
+import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
+import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.LinearFilter;
@@ -133,8 +135,8 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
     private final LinearFilter m_upperMeasurementFilter;
     private final PIDController m_lowerController;
     private final PIDController m_upperController;
-    private final FRCNEO lowerArmMotor;
-    private final FRCNEO upperArmMotor;
+    private final CANSparkMax lowerArmMotor;
+    private final CANSparkMax upperArmMotor;
     private final AnalogInput lowerArmInput;
     private final AnalogInput upperArmInput;
     private final AnalogEncoder lowerArmEncoder;
@@ -153,28 +155,19 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
         m_lowerController.setTolerance(m_config.tolerance);
         m_upperController.setTolerance(m_config.tolerance);
 
-        lowerArmMotor = new FRCNEO.FRCNEOBuilder(43)
-                .withInverted(false)
-                .withSensorPhase(false)
-                .withTimeout(10)
-                .withCurrentLimitEnabled(true)
-                .withCurrentLimit(40)
-                .withPeakOutputForward(0.5)
-                .withPeakOutputReverse(-0.5)
-                .withNeutralMode(IdleMode.kBrake)
-                .build();
+		lowerArmMotor = new CANSparkMax(43, MotorType.kBrushless);
+		lowerArmMotor.restoreFactoryDefaults();
+		lowerArmMotor.setInverted(false);
+		lowerArmMotor.setSmartCurrentLimit(40);
+		lowerArmMotor.setSecondaryCurrentLimit(40);
+		lowerArmMotor.setIdleMode(IdleMode.kBrake);
 
-        upperArmMotor = new FRCNEO.FRCNEOBuilder(42)
-                .withInverted(false)
-                .withSensorPhase(false)
-                .withTimeout(10)
-                .withCurrentLimitEnabled(true)
-                .withCurrentLimit(40)
-                .withPeakOutputForward(0.5)
-                .withPeakOutputReverse(-0.5)
-                .withNeutralMode(IdleMode.kBrake)
-                .withForwardSoftLimitEnabled(false)
-                .build();
+		upperArmMotor = new CANSparkMax(42, MotorType.kBrushless);
+		upperArmMotor.restoreFactoryDefaults();
+		upperArmMotor.setInverted(false);
+		upperArmMotor.setSmartCurrentLimit(40);
+		upperArmMotor.setSecondaryCurrentLimit(40);
+		upperArmMotor.setIdleMode(IdleMode.kBrake);        
 
         lowerArmInput = new AnalogInput(6);
         lowerArmEncoder = new AnalogEncoder(lowerArmInput);
@@ -186,6 +179,7 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
 
     @Override
     public void periodic() {
+        // TODO: add some sort of "enable auto" for this to be safe and not conflict with manual mode
         ArmAngles measurement = getMeasurement();
 
         t.log("/Arm Subsystem/Upper Arm Measurement Radians", measurement.th2);
@@ -204,6 +198,10 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
         double u2 = m_upperController.calculate(measurement.th2, m_reference.th2);
         lowerArmMotor.set(soften(u1));
         upperArmMotor.set(u2);
+
+        t.log("/Arm Subsystem/Upper Arm Output amps", lowerArmMotor.getOutputCurrent());
+        t.log("/Arm Subsystem/Lower Arm Output amps", upperArmMotor.getOutputCurrent());
+
     }
 
     public void setCubeMode(boolean mode) {
@@ -285,11 +283,11 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
     }
 
     public void setUpperSpeed(double x) {
-        upperArmMotor.drivePercentOutput(x);
+        upperArmMotor.set(x);
     }
 
     public void setLowerSpeed(double x) {
-        lowerArmMotor.drivePercentOutput(x);
+        lowerArmMotor.set(x);
     }
 
     @Override
