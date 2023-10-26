@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import org.team100.frc2023.autonomous.Autonomous;
 import org.team100.frc2023.autonomous.DriveToAprilTag;
-// import org.team100.frc2023.autonomous.DriveToWaypoint3;
 import org.team100.frc2023.autonomous.MoveConeWidth;
 import org.team100.frc2023.autonomous.Rotate;
 import org.team100.frc2023.commands.Defense;
@@ -14,16 +13,14 @@ import org.team100.frc2023.commands.DriveWithHeading;
 import org.team100.frc2023.commands.DriveWithSetpointGenerator;
 import org.team100.frc2023.commands.RumbleOn;
 import org.team100.frc2023.commands.arm.ArmTrajectory;
-import org.team100.frc2023.commands.arm.ManualArm;
 import org.team100.frc2023.commands.arm.SetConeMode;
 import org.team100.frc2023.commands.arm.SetCubeMode;
+import org.team100.frc2023.commands.manipulator.Eject;
 import org.team100.frc2023.commands.manipulator.Hold;
 import org.team100.frc2023.commands.manipulator.Intake;
-import org.team100.frc2023.commands.manipulator.Eject;
 import org.team100.frc2023.commands.retro.DriveToRetroReflectiveTape;
 import org.team100.frc2023.control.Control;
 import org.team100.frc2023.control.DualXboxControl;
-import org.team100.frc2023.control.JoystickControl;
 import org.team100.frc2023.subsystems.Manipulator;
 import org.team100.frc2023.subsystems.ManipulatorInterface;
 import org.team100.frc2023.subsystems.arm.ArmInterface;
@@ -200,15 +197,15 @@ public class RobotContainer {
         // DRIVETRAIN COMMANDS
         // control.autoLevel(new AutoLevel(false, m_robotDrive, ahrsclass));
         if (m_allianceSelector.alliance() == DriverStation.Alliance.Blue) {
-            control.driveToLeftGrid(toTag(controller, 6, 1.25, 0));
-            control.driveToCenterGrid(toTag(controller, 7, 0.95, .55));
-            control.driveToRightGrid(toTag(controller, 8, 0.95, .55));
-            control.driveToSubstation(toTag(controller, 4, 0.53, -0.749));
+            control.driveToLeftGrid(toTag(6, 1.25, 0));
+            control.driveToCenterGrid(toTag(7, 0.95, .55));
+            control.driveToRightGrid(toTag(8, 0.95, .55));
+            control.driveToSubstation(toTag(4, 0.53, -0.749));
         } else {
-            control.driveToLeftGrid(toTag(controller, 1, 0.95, .55));
-            control.driveToCenterGrid(toTag(controller, 2, 0.95, .55));
-            control.driveToRightGrid(toTag(controller, 3, 0.95, .55));
-            control.driveToSubstation(toTag(controller, 5, 0.9, -0.72));
+            control.driveToLeftGrid(toTag(1, 0.95, .55));
+            control.driveToCenterGrid(toTag(2, 0.95, .55));
+            control.driveToRightGrid(toTag(3, 0.95, .55));
+            control.driveToSubstation(toTag(5, 0.9, -0.72));
         }
         control.defense(new Defense(m_robotDrive));
         control.resetRotation0(new ResetRotation(m_robotDrive, new Rotation2d(0)));
@@ -375,7 +372,6 @@ public class RobotContainer {
     }
 
     private DriveToAprilTag toTag(
-            HolonomicDriveController2 controller,
             int tagID,
             double xOffset,
             double yOffset) {

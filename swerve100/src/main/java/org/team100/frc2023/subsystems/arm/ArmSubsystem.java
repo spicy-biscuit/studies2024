@@ -1,12 +1,11 @@
 package org.team100.frc2023.subsystems.arm;
 
-import org.team100.lib.motion.arm.ArmKinematics;
-import org.team100.lib.telemetry.Telemetry;
 import org.team100.lib.config.Identity;
 import org.team100.lib.controller.State100;
 import org.team100.lib.motion.arm.ArmAngles;
+import org.team100.lib.motion.arm.ArmKinematics;
+import org.team100.lib.telemetry.Telemetry;
 
-import com.revrobotics.SparkMaxAnalogSensor;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
@@ -35,11 +34,12 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
 
         @Override
         public void setCubeMode(boolean b) {
+            //
         }
 
         @Override
         public void setReference(ArmAngles reference) {
-
+            //
         }
 
         @Override
@@ -49,26 +49,18 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
 
         @Override
         public void setControlNormal() {
+            //
         }
 
         @Override
         public void setControlSafe() {
+            //
         }
 
         @Override
         public void close() {
+            //
         }
-
-        @Override
-        public void setUpperSpeed(double x) {
-
-        }
-
-        @Override
-        public void setLowerSpeed(double x) {
-
-        }
-
     }
 
     public static class Factory {
@@ -280,14 +272,6 @@ public class ArmSubsystem extends Subsystem implements ArmInterface {
     private double getUpperArm() {
         double x = (upperArmEncoder.getAbsolutePosition() - 0.266396) * 360;
         return x * Math.PI / 180;
-    }
-
-    public void setUpperSpeed(double x) {
-        upperArmMotor.set(x);
-    }
-
-    public void setLowerSpeed(double x) {
-        lowerArmMotor.set(x);
     }
 
     @Override

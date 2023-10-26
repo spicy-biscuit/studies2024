@@ -1,12 +1,10 @@
 package com.team254.frc2022.planners;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import com.team254.frc2022.Constants;
-// import com.team254.frc2022.subsystems.Drive;
 import com.team254.lib.control.Lookahead;
 import com.team254.lib.geometry.Pose2d;
 import com.team254.lib.geometry.Pose2dWithCurvature;
