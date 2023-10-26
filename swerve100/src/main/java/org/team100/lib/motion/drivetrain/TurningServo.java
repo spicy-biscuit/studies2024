@@ -50,6 +50,7 @@ public class TurningServo {
         } else {
             onboard(state);
         }
+        log();
     }
 
     void offboard(SwerveModuleState state) {
@@ -60,20 +61,8 @@ public class TurningServo {
         double turnOutputDeadbandRad_S = MathUtil.applyDeadband(turnOutputRad_S, m_config.kSteeringDeadband);
         m_turningMotor.setPIDVelocity(turnOutputDeadbandRad_S, 0);
 
-        t.log(m_name + "/Turning Measurement (rad)",  getTurningAngleRad());
-        t.log(m_name + "/Turning Measurement (deg)",  Units.radiansToDegrees(getTurningAngleRad()));
-
-        t.log(m_name + "/Turning Goal (rad)", m_turningController.getGoal().position);
-        t.log(m_name + "/Turning Setpoint (rad)", m_turningController.getSetpoint().position);
-        t.log(m_name + "/Turning Setpoint Velocity (rad_s)", getTurnSetpointVelocityRadS());
-        t.log(m_name + "/Turning Error (rad)", m_turningController.getPositionError());
-        t.log(m_name + "/Turning Error Velocity (rad_s)", m_turningController.getVelocityError());
-
         t.log(m_name + "/Controller Output rad_s", turningMotorControllerOutputRad_S);
         t.log(m_name + "/Feed Forward Output rad_s", turningFeedForwardRad_S);
-
-        t.log(m_name + "/Turning Motor Output [-1, 1]", m_turningMotor.get());
-
     }
 
     void onboard(SwerveModuleState state) {
@@ -83,6 +72,11 @@ public class TurningServo {
         double turnOutput = turningMotorControllerOutput + turningFeedForwardOutput;
         set(MathUtil.applyDeadband(turnOutput, m_config.kSteeringDeadband));
 
+        t.log(m_name + "/Controller Output", turningMotorControllerOutput);
+        t.log(m_name + "/Feed Forward Output", turningFeedForwardOutput);
+    }
+
+    private void log() {
         t.log(m_name + "/Turning Measurement (rad)", getTurningAngleRad());
         t.log(m_name + "/Turning Measurement (deg)", Units.radiansToDegrees(getTurningAngleRad()));
 
@@ -91,9 +85,6 @@ public class TurningServo {
         t.log(m_name + "/Turning Setpoint Velocity (rad/s)", getTurnSetpointVelocityRadS());
         t.log(m_name + "/Turning Error (rad)", m_turningController.getPositionError());
         t.log(m_name + "/Turning Error Velocity (rad/s)", m_turningController.getVelocityError());
-
-        t.log(m_name + "/Controller Output", turningMotorControllerOutput);
-        t.log(m_name + "/Feed Forward Output", turningFeedForwardOutput);
 
         t.log(m_name + "/Turning Motor Output [-1, 1]", m_turningMotor.get());
     }

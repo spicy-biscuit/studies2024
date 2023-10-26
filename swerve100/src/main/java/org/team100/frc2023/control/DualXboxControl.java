@@ -52,7 +52,7 @@ public class DualXboxControl implements Control {
     @Override
     public void driveToLeftGrid(Command command) {
         // controller0.x().whileTrue(command);
-    };
+    }
 
     @Override
     public void autoLevel(Command command) {
@@ -62,17 +62,17 @@ public class DualXboxControl implements Control {
     @Override
     public void driveToCenterGrid(Command command) {
         // controller0.a().whileTrue(command);
-    };
+    }
 
     @Override
     public void driveToRightGrid(Command command) {
         // controller0.b().whileTrue(command);
-    };
+    }
 
     @Override
     public void driveToSubstation(Command command) {
         // controller0.y().whileTrue(command);
-    };
+    }
 
     @Override
     public void resetRotation0(Command command) {
@@ -169,6 +169,7 @@ public class DualXboxControl implements Control {
         controller0.rightBumper().whileTrue(command);
     }
 
+    @Override
     public void moveConeWidthLeft(Command command) {
         // controller0.y().whileTrue(command);
     }
@@ -178,10 +179,12 @@ public class DualXboxControl implements Control {
         // controller0.a().whileTrue(command);
     }
 
+    @Override
     public void driveWithLQR(Command command) {
         controller0.y().whileTrue(command);
     }
 
+    @Override
     public void driveWith254Trajec(Command command){
         controller0.a().whileTrue(command);
     }
@@ -298,18 +301,8 @@ public class DualXboxControl implements Control {
     }
 
     @Override
-    public void ledOn(Command command) {
-        // controller1.rightBumper().whileTrue(command);
-    }
-
-    @Override
     public void oscillate(Command command) {
         controller1.rightBumper().whileTrue(command);
-    }
-
-    @Override
-    public void tapeDetect(Command command) {
-        // controller1.leftBumper().whileTrue(command);
     }
 
     @Override

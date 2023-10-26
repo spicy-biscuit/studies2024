@@ -73,14 +73,11 @@ public class SwerveLocal {
      * @param targetChassisSpeeds speeds in robot coordinates.
      */
     public void setChassisSpeeds(ChassisSpeeds targetChassisSpeeds) {
-        // if (m_experiments.enabled(Experiment.UseSetpointGenerator)) {
-        // setChassisSpeedsNormally(targetChassisSpeeds);
-        // } else {
-        // setChassisSpeedsWithSetpointGenerator(targetChassisSpeeds);
-        // }
-
-        setChassisSpeedsNormally(targetChassisSpeeds);
-
+        if (m_experiments.enabled(Experiment.UseSetpointGenerator)) {
+            setChassisSpeedsWithSetpointGenerator(targetChassisSpeeds);
+        } else {
+            setChassisSpeedsNormally(targetChassisSpeeds);
+        }
     }
 
     public void setChassisSpeeds254(com.team254.lib.swerve.ChassisSpeeds targetChassisSpeeds) {
