@@ -57,6 +57,7 @@ import org.team100.lib.retro.Illuminator;
 import org.team100.lib.retro.IlluminatorInterface;
 import org.team100.lib.sensors.RedundantGyro;
 import org.team100.lib.sensors.RedundantGyroInterface;
+import org.team100.lib.telemetry.Telemetry;
 import org.team100.lib.trajectory.FancyTrajectory;
 
 import edu.wpi.first.math.VecBuilder;
@@ -64,17 +65,14 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.util.sendable.Sendable;
-import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 
-public class RobotContainer implements Sendable {
+public class RobotContainer {
     public static class Config {
 
         //////////////////////////////////////
@@ -94,11 +92,10 @@ public class RobotContainer implements Sendable {
 
     private final Config m_config = new Config();
 
+    private final Telemetry t = Telemetry.get();
+
     private final AutonSelector m_autonSelector;
     private final AllianceSelector m_allianceSelector;
-
-    // CONFIG
-    private final DriverStation.Alliance m_alliance;
 
     // SUBSYSTEMS
     private final Heading m_heading;
@@ -126,8 +123,10 @@ public class RobotContainer implements Sendable {
     public RobotContainer() throws IOException {
 
         m_autonSelector = new AutonSelector();
+        t.log("/Routine", getRoutine());
+
         m_allianceSelector = new AllianceSelector();
-        m_alliance = m_allianceSelector.alliance();
+        t.log("/Alliance", m_allianceSelector.alliance().name());
 
         m_indicator = new LEDIndicator(8);
 
@@ -162,7 +161,7 @@ public class RobotContainer implements Sendable {
                 VecBuilder.fill(0.5, 0.5, 0.5),
                 VecBuilder.fill(0.4, 0.4, 0.4)); // note tight rotation variance here, used to be MAX_VALUE
 
-        if (m_alliance == DriverStation.Alliance.Blue) {
+        if (m_allianceSelector.alliance() == DriverStation.Alliance.Blue) {
             layout = AprilTagFieldLayoutWithCorrectOrientation.blueLayout();
         } else { // red
             layout = AprilTagFieldLayoutWithCorrectOrientation.redLayout();
@@ -173,7 +172,7 @@ public class RobotContainer implements Sendable {
                 layout,
                 poseEstimator,
                 poseEstimator::getEstimatedPosition);
-        visionDataProvider.updateTimestamp(); // this is just to keep lint from complaining
+        visionDataProvider.enable();
 
         SwerveLocal swerveLocal = new SwerveLocal(experiments, speedLimits, m_kinematics, m_modules);
 
@@ -200,7 +199,7 @@ public class RobotContainer implements Sendable {
         ////////////////////////////
         // DRIVETRAIN COMMANDS
         // control.autoLevel(new AutoLevel(false, m_robotDrive, ahrsclass));
-        if (m_alliance == DriverStation.Alliance.Blue) {
+        if (m_allianceSelector.alliance() == DriverStation.Alliance.Blue) {
             control.driveToLeftGrid(toTag(controller, 6, 1.25, 0));
             control.driveToCenterGrid(toTag(controller, 7, 0.95, .55));
             control.driveToRightGrid(toTag(controller, 8, 0.95, .55));
@@ -302,7 +301,6 @@ public class RobotContainer implements Sendable {
         ////////////////////////
         // ARM
         // m_arm.setDefaultCommand(new ManualArm(m_arm, control::lowerSpeed, control::upperSpeed));
-        SmartDashboard.putData("Robot Container", this);
     }
 
     public void scheduleAuton() {
@@ -345,10 +343,6 @@ public class RobotContainer implements Sendable {
         };
         m_robotDrive.test(desiredOutputs, myWriter);
 
-    }
-
-    public boolean isBlueAlliance() {
-        return m_alliance == DriverStation.Alliance.Blue;
     }
 
     public double getRoutine() {
@@ -405,15 +399,4 @@ public class RobotContainer implements Sendable {
         m_arm.close();
         illuminator.close();
     }
-
-    @Override
-    public void initSendable(SendableBuilder builder) {
-        builder.setSmartDashboardType("container");
-        builder.addBooleanProperty("Is Blue Alliance", () -> isBlueAlliance(), null);
-        builder.addDoubleProperty("Routine", () -> getRoutine(), null);
-        builder.addDoubleProperty("Heading Degrees", () -> m_heading.getHeadingNWU().getDegrees(), null);
-        builder.addDoubleProperty("Heading Radians", () -> m_heading.getHeadingNWU().getRadians(), null);
-
-    }
-
 }

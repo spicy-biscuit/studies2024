@@ -5,12 +5,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.team100.lib.config.Identity;
-
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringArrayPublisher;
+import org.team100.lib.telemetry.Telemetry;
 
 public class Experiments {
+    private final Telemetry t = Telemetry.get();
+
     /** These experiments are enabled on every robot type. */
     private final Set<Experiment> globalExperiments = Set.of(
             Experiment.UseSetpointGenerator);
@@ -24,17 +23,10 @@ public class Experiments {
     public Experiments(Identity identity) {
         m_experiments = EnumSet.copyOf(globalExperiments);
         m_experiments.addAll(experimentsByIdentity.getOrDefault(identity, EnumSet.noneOf(Experiment.class)));
-        enabledExperiments.set(m_experiments.stream().map(Experiment::name).toArray(String[]::new));
+        t.log("/experiments/enabled", m_experiments.stream().map(Experiment::name).toArray(String[]::new));
     }
 
     public boolean enabled(Experiment experiment) {
         return m_experiments.contains(experiment);
     }
-
-    //////////////////////////////////////////////////
-
-    private final NetworkTableInstance inst = NetworkTableInstance.getDefault();
-    private final NetworkTable table = inst.getTable("experiments");
-    private final StringArrayPublisher enabledExperiments = table.getStringArrayTopic("enabled").publish();
-
 }
