@@ -6,7 +6,7 @@ import org.msgpack.jackson.dataformat.MessagePackFactory;
 import org.team100.lib.controller.State100;
 import org.team100.lib.localization.Tapes;
 import org.team100.lib.motion.drivetrain.SpeedLimits;
-import org.team100.lib.motion.drivetrain.SwerveDriveSubsystem;
+import org.team100.lib.motion.drivetrain.SwerveDriveSubsystemInterface;
 import org.team100.lib.motion.drivetrain.SwerveState;
 import org.team100.lib.profile.MotionProfile;
 import org.team100.lib.profile.MotionProfileGenerator;
@@ -44,7 +44,7 @@ public class DriveToRetroReflectiveTape extends Command {
 
     private final Telemetry t = Telemetry.get();
 
-    private final SwerveDriveSubsystem m_robotDrive;
+    private final SwerveDriveSubsystemInterface m_robotDrive;
     private final SpeedLimits m_speedLimits;
     private final LinearFilter xFilter;
     private final LinearFilter yFilter;
@@ -62,7 +62,7 @@ public class DriveToRetroReflectiveTape extends Command {
     private MotionState m_yRef;
 
     public DriveToRetroReflectiveTape(
-            SwerveDriveSubsystem robotDrive,
+            SwerveDriveSubsystemInterface robotDrive,
             SpeedLimits speedLimits) {
         m_robotDrive = robotDrive;
         m_speedLimits = speedLimits;

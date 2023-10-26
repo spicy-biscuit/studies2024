@@ -7,7 +7,6 @@ import numpy as np
 from cscore import CameraServer
 from ntcore import NetworkTableInstance
 from picamera2 import Picamera2
-from pupil_apriltags import Detector
 import math
     
 class RetroFinder:

@@ -18,7 +18,6 @@ import org.team100.frc2023.commands.arm.SetCubeMode;
 import org.team100.frc2023.commands.manipulator.Eject;
 import org.team100.frc2023.commands.manipulator.Hold;
 import org.team100.frc2023.commands.manipulator.Intake;
-import org.team100.frc2023.commands.retro.DriveToRetroReflectiveTape;
 import org.team100.frc2023.control.Control;
 import org.team100.frc2023.control.DualXboxControl;
 import org.team100.frc2023.subsystems.Manipulator;
@@ -28,7 +27,6 @@ import org.team100.frc2023.subsystems.arm.ArmPosition;
 import org.team100.frc2023.subsystems.arm.ArmSubsystem;
 import org.team100.lib.commands.ResetPose;
 import org.team100.lib.commands.ResetRotation;
-import org.team100.lib.commands.retro.LedOn;
 import org.team100.lib.config.AllianceSelector;
 import org.team100.lib.config.AutonSelector;
 import org.team100.lib.config.Identity;
@@ -50,8 +48,6 @@ import org.team100.lib.motion.drivetrain.SwerveModuleCollectionInterface;
 import org.team100.lib.motion.drivetrain.VeeringCorrection;
 import org.team100.lib.motion.drivetrain.kinematics.FrameTransform;
 import org.team100.lib.motion.drivetrain.kinematics.SwerveDriveKinematicsFactory;
-import org.team100.lib.retro.Illuminator;
-import org.team100.lib.retro.IlluminatorInterface;
 import org.team100.lib.sensors.RedundantGyro;
 import org.team100.lib.sensors.RedundantGyroInterface;
 import org.team100.lib.telemetry.Telemetry;
@@ -106,7 +102,6 @@ public class RobotContainer {
     private final FrameTransform m_frameTransform;
     private final ManipulatorInterface manipulator;
     private final ArmInterface m_arm;
-    private final IlluminatorInterface illuminator;
 
     // HID CONTROL
     private final Control control;
@@ -185,7 +180,6 @@ public class RobotContainer {
                 m_field);
         manipulator = new Manipulator.Factory(identity).get();
         m_arm = new ArmSubsystem.Factory(identity).get();
-        illuminator = new Illuminator.Factory(identity).get(25);
 
         // TODO: control selection using names
         control = new DualXboxControl();
@@ -215,7 +209,6 @@ public class RobotContainer {
         SpeedLimits medium = new SpeedLimits(2.0, 2.0, 0.5, 1.0);
         control.driveMedium(new DriveScaled(control::twist, m_robotDrive, medium));
         control.resetPose(new ResetPose(m_robotDrive, 0, 0, 0));
-        control.tapeDetect(new DriveToRetroReflectiveTape(m_robotDrive, speedLimits));
         control.rotate0(new Rotate(m_robotDrive, m_heading, speedLimits, new Timer(), 0));
 
         control.moveConeWidthLeft(new MoveConeWidth(m_robotDrive, speedLimits, new Timer(), true));
@@ -249,7 +242,6 @@ public class RobotContainer {
 
         //////////////////////////
         // MISC COMMANDS
-        control.ledOn(new LedOn(illuminator));
         control.rumbleTrigger(new RumbleOn(control));
 
         m_auton = new Autonomous(
@@ -393,6 +385,5 @@ public class RobotContainer {
         m_indicator.close();
         m_modules.close();
         m_arm.close();
-        illuminator.close();
     }
 }

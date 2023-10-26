@@ -31,10 +31,10 @@ public class Illuminator implements IlluminatorInterface {
 
         public IlluminatorInterface get(int deviceId) {
             switch (m_identity) {
+                case SWERVE_ONE:
+                    return new Illuminator(deviceId);
                 default:
-                    // none of the robots have this part right now.
                     return new Noop();
-                // return new Illuminator(deviceId);
             }
         }
     }
