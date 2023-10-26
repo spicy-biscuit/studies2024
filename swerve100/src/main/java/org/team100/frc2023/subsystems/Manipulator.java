@@ -1,11 +1,10 @@
 package org.team100.frc2023.subsystems;
 
 import org.team100.lib.config.Identity;
-import org.team100.lib.motor.FRCTalonSRX;
-import org.team100.lib.motor.FRCTalonSRX.FRCTalonSRXBuilder;
 import org.team100.lib.telemetry.Telemetry;
 
 import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 
 import edu.wpi.first.wpilibj2.command.Subsystem;
 
@@ -26,7 +25,6 @@ public class Manipulator extends Subsystem implements ManipulatorInterface {
             return 0;
         }
 
-       
     }
 
     public static class Factory {
@@ -47,32 +45,30 @@ public class Manipulator extends Subsystem implements ManipulatorInterface {
     }
 
     private final Telemetry t = Telemetry.get();
+    private final WPI_TalonSRX m_motor;
 
-    private final FRCTalonSRX m_motor;
-   
     private Manipulator() {
-        var b = new FRCTalonSRXBuilder(10);
-        b.inverted = false;
-        b.useInvertType = false;
-        b.sensorPhase = false;
-        b.peakOutputForward =  1;
-        b.peakOutputReverse = -1;
-        b.neutralMode = NeutralMode.Brake;
-        b.currentLimitEnabled = true;
-        m_motor =b.build();
-        m_motor.motor.configPeakCurrentLimit(30);
-        m_motor.motor.configPeakCurrentDuration(1000);
+        m_motor = new WPI_TalonSRX(10);
+        m_motor.configFactoryDefault();
+        m_motor.setSafetyEnabled(false);
+        m_motor.enableCurrentLimit(true);
+        m_motor.configContinuousCurrentLimit(0);
+        m_motor.setNeutralMode(NeutralMode.Brake);
+        m_motor.configPeakOutputForward(1);
+        m_motor.configPeakOutputReverse(-1);
+        m_motor.configPeakCurrentLimit(30);
+        m_motor.configPeakCurrentDuration(1000);
     }
 
     public void set(double speed1_1, int currentLimit) {
-        m_motor.motor.configPeakCurrentLimit(currentLimit);
-        m_motor.motor.set(speed1_1);
-        t.log("/Manipulator/Output Current amps",  m_motor.motor.getStatorCurrent());
-        t.log("/Manipulator/Input Current amps", m_motor.motor.getSupplyCurrent());
+        m_motor.configPeakCurrentLimit(currentLimit);
+        m_motor.set(speed1_1);
+        t.log("/Manipulator/Output Current amps", m_motor.getStatorCurrent());
+        t.log("/Manipulator/Input Current amps", m_motor.getSupplyCurrent());
     }
 
     public double getStatorCurrent() {
-        return m_motor.motor.getStatorCurrent();
+        return m_motor.getStatorCurrent();
     }
 
     @Override
