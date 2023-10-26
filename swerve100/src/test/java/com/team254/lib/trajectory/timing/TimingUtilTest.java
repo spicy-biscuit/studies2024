@@ -84,17 +84,14 @@ public class TimingUtilTest {
         // Triangle profile.
         Trajectory<TimedState<Translation2d>, TimedState<Rotation2d>> timed_traj = buildAndCheckTrajectory(dist_view, 1.0,
                 new ArrayList<TimingConstraint<Translation2d>>(), 0.0, 0.0, 20.0, 5.0);
-        System.out.println(timed_traj.toCSV());
 
         // Trapezoidal profile.
         timed_traj = buildAndCheckTrajectory(dist_view, 1.0, new ArrayList<TimingConstraint<Translation2d>>(), 0.0, 0.0,
                 10.0, 5.0);
-        System.out.println(timed_traj.toCSV());
 
         // Trapezoidal profile with start and end velocities.
         timed_traj = buildAndCheckTrajectory(dist_view, 1.0, new ArrayList<TimingConstraint<Translation2d>>(), 5.0, 2.0,
                 10.0, 5.0);
-        System.out.println(timed_traj.toCSV());
     }
 
     @Test
@@ -122,7 +119,6 @@ public class TimingUtilTest {
         // Trapezoidal profile.
         Trajectory<TimedState<Translation2d>, TimedState<Rotation2d>> timed_traj = buildAndCheckTrajectory(dist_view, 1.0,
                 Arrays.asList(new ConditionalTimingConstraint<>()), 0.0, 0.0, 10.0, 5.0);
-        System.out.println(timed_traj.toCSV());
     }
 
     @Test
@@ -146,7 +142,6 @@ public class TimingUtilTest {
         // Trapezoidal profile.
         Trajectory<TimedState<Translation2d>, TimedState<Rotation2d>> timed_traj = buildAndCheckTrajectory(dist_view, 1.0,
                 Arrays.asList(new ConditionalTimingConstraint<>()), 0.0, 0.0, 10.0, 5.0);
-        System.out.println(timed_traj.toCSV());
     }
 
     @Test
@@ -160,7 +155,6 @@ public class TimingUtilTest {
         // Trapezoidal profile.
         Trajectory<TimedState<Translation2d>, TimedState<Rotation2d>> timed_traj = buildAndCheckTrajectory(dist_view, 1.0,
                 Arrays.asList(constraint), 0.0, 0.0, 10.0, 5.0);
-        System.out.println(timed_traj.toCSV());
     }
 
 }
