@@ -13,10 +13,12 @@ public class Illuminator implements IlluminatorInterface {
 
         @Override
         public void set(double i) {
+            //
         }
 
         @Override
         public void close() {
+            //
         }
     }
 

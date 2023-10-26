@@ -54,6 +54,7 @@ public class DriveServo {
         } else {
             onboard(speedM_S);
         }
+        log();
     }
 
     void set(double output) {
@@ -62,16 +63,6 @@ public class DriveServo {
 
     void offboard(double speedM_S) {
         m_driveMotor.setPID(ControlMode.Velocity, speedM_S);
-
-        t.log(m_name + "Drive position (m)", m_driveEncoder.getDistance());
-        t.log(m_name + "Drive Speed (m/s)", getDriveSpeedMS());
-
-        t.log(m_name + "Drive Setpoint (m/s)", m_driveController.getSetpoint());
-        t.log(m_name + "Drive Speed Error (m/s)", m_driveController.getPositionError());
-        t.log(m_name + "Drive Accel Error (m/s/s)", m_driveController.getVelocityError());
-
-        t.log(m_name + "Drive Motor Output [-1, 1]", m_driveMotor.get());
-
     }
 
     void onboard(double speedM_S) {
@@ -83,6 +74,11 @@ public class DriveServo {
         // output deadband to prevent shivering.
         set(MathUtil.applyDeadband(driveOutput, m_config.kDriveDeadband));
 
+        t.log(m_name + "Controller Output", driveMotorControllerOutput);
+        t.log(m_name + "Feed Forward Output", driveFeedForwardOutput);
+    }
+
+    private void log() {
         t.log(m_name + "Drive position (m)", m_driveEncoder.getDistance());
         t.log(m_name + "Drive Speed (m_s)", getDriveSpeedMS());
 
@@ -90,11 +86,7 @@ public class DriveServo {
         t.log(m_name + "Drive Speed Error (m_s)", m_driveController.getPositionError());
         t.log(m_name + "Drive Accel Error (m_s_s)", m_driveController.getVelocityError());
 
-        t.log(m_name + "Controller Output", driveMotorControllerOutput);
-        t.log(m_name + "Feed Forward Output", driveFeedForwardOutput);
-
         t.log(m_name + "Drive Motor Output [-1, 1]", m_driveMotor.get());
-
     }
 
     double getDriveDistanceM() {

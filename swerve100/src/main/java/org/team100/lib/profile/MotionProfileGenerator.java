@@ -123,13 +123,12 @@ public class MotionProfileGenerator {
                         .build();
             } else if (Math.abs(requiredAccel) > maxAccel) {
                 if (overshoot) {
-                    // TODO: is this most efficient? (do we care?)
                     return noCoastProfile.plus(generateSimpleMotionProfile(
                             noCoastProfile.end(),
                             goal,
                             maxVel,
                             maxAccel,
-                            overshoot = true));
+                            true));
                 } else {
                     // single segment profile
                     double dt = (goal.getV() - start.getV()) / requiredAccel;
@@ -144,7 +143,7 @@ public class MotionProfileGenerator {
                         2 * start.getV(),
                         (goal.getV() * goal.getV() - start.getV() * start.getV()) / (2 * maxAccel) - goal.getX()
                                 + start.getX());
-                double deltaT1 = roots.stream().filter((it) -> it >= 0.0).min(Double::compare).orElseThrow();
+                double deltaT1 = roots.stream().filter(it -> it >= 0.0).min(Double::compare).orElseThrow();
                 double deltaT3 = Math.abs(start.getV() - goal.getV()) / maxAccel + deltaT1;
 
                 return new MotionProfileBuilder(start)
@@ -158,7 +157,7 @@ public class MotionProfileGenerator {
                         2 * start.getV(),
                         (start.getV() * start.getV() - goal.getV() * goal.getV()) / (2 * maxAccel) - goal.getX()
                                 + start.getX());
-                double deltaT1 = roots.stream().filter((it) -> it >= 0.0).min(Double::compare).orElseThrow();
+                double deltaT1 = roots.stream().filter(it -> it >= 0.0).min(Double::compare).orElseThrow();
                 double deltaT3 = Math.abs(start.getV() - goal.getV()) / maxAccel + deltaT1;
 
                 return new MotionProfileBuilder(start)
@@ -244,7 +243,7 @@ public class MotionProfileGenerator {
                             maxVel,
                             maxAccel,
                             maxJerk,
-                            overshoot = true));
+                            true));
                 } else {
                     // violate max jerk first
                     return generateSimpleMotionProfile(
@@ -252,7 +251,7 @@ public class MotionProfileGenerator {
                             goal,
                             maxVel,
                             maxAccel,
-                            overshoot = false);
+                            false);
                 }
             }
         }
@@ -325,7 +324,7 @@ public class MotionProfileGenerator {
                                 -maxJerk,
                                 2 * start.getA(),
                                 start.getV() - maxVel - start.getA() * start.getA() / (2 * maxJerk));
-                        double finalDeltaT1 = roots.stream().filter((it) -> it >= 0.0).min(Double::compare)
+                        double finalDeltaT1 = roots.stream().filter(it -> it >= 0.0).min(Double::compare)
                                 .orElseThrow();
                         double finalDeltaT3 = finalDeltaT1 - start.getA() / maxJerk;
 
@@ -349,7 +348,7 @@ public class MotionProfileGenerator {
                             maxJerk,
                             2 * start.getA(),
                             start.getV() - maxVel + start.getA() * start.getA() / (2 * maxJerk));
-                    double newDeltaT1 = roots.stream().filter((it) -> it >= 0.0).min(Double::compare).orElseThrow();
+                    double newDeltaT1 = roots.stream().filter(it -> it >= 0.0).min(Double::compare).orElseThrow();
                     double newDeltaT3 = newDeltaT1 + start.getA() / maxJerk;
 
                     return new MotionProfileBuilder(start)
@@ -429,7 +428,7 @@ public class MotionProfileGenerator {
 
         DoubleProgression s = DoubleProgression.fromClosedInterval(0.0, length, samples);
         List<EvaluatedConstraint> constraintsList = StreamSupport.stream(s.plus(start.getX()).spliterator(), false)
-                .map((it) -> new EvaluatedConstraint(
+                .map(it -> new EvaluatedConstraint(
                         velocityConstraint.get(it),
                         accelerationConstraint.get(it)))
                 .collect(Collectors.toList());
@@ -438,7 +437,7 @@ public class MotionProfileGenerator {
         List<Pair<MotionState, Double>> forwardStates = forwardPass(
                 new MotionState(0.0, start.getV(), start.getA()),
                 s,
-                constraintsList).stream().map((it) -> {
+                constraintsList).stream().map(it -> {
                     MotionState motionState = it.getFirst();
                     double dx = it.getSecond();
                     return new Pair<>(new MotionState(
@@ -448,16 +447,16 @@ public class MotionProfileGenerator {
                 }).collect(Collectors.toList());
 
         // compute the backward states
-        List<EvaluatedConstraint> backwardsConstraints = new ArrayList<EvaluatedConstraint>(constraintsList);
+        List<EvaluatedConstraint> backwardsConstraints = new ArrayList<>(constraintsList);
         Collections.reverse(backwardsConstraints);
         List<Pair<MotionState, Double>> backwardStates = forwardPass(
                 new MotionState(0.0, goal.getV(), goal.getA()),
                 s,
-                backwardsConstraints).stream().map((it) -> {
+                backwardsConstraints).stream().map(it -> {
                     MotionState motionState = it.getFirst();
                     double dx = it.getSecond();
                     return new Pair<>(afterDisplacement(motionState, dx), dx);
-                }).map((it) -> {
+                }).map(it -> {
                     MotionState motionState = it.getFirst();
                     double dx = it.getSecond();
                     return new Pair<>(
@@ -470,7 +469,7 @@ public class MotionProfileGenerator {
         Collections.reverse(backwardStates);
 
         // merge the forward and backward states
-        List<Pair<MotionState, Double>> finalStates = new ArrayList<Pair<MotionState, Double>>();
+        List<Pair<MotionState, Double>> finalStates = new ArrayList<>();
 
         int i = 0;
         while (i < forwardStates.size() && i < backwardStates.size()) {
@@ -540,7 +539,7 @@ public class MotionProfileGenerator {
         }
 
         // turn the final states into actual time-parameterized motion segments
-        List<MotionSegment> motionSegments = new ArrayList<MotionSegment>();
+        List<MotionSegment> motionSegments = new ArrayList<>();
         for (Pair<MotionState, Double> finalState : finalStates) {
             MotionState state = finalState.getFirst();
             double stateDx = finalState.getSecond();
@@ -568,7 +567,7 @@ public class MotionProfileGenerator {
             MotionState start,
             DoubleProgression displacements,
             List<EvaluatedConstraint> constraints) {
-        List<Pair<MotionState, Double>> forwardStates = new ArrayList<Pair<MotionState, Double>>();
+        List<Pair<MotionState, Double>> forwardStates = new ArrayList<>();
 
         double dx = displacements.getStep();
 
@@ -623,4 +622,6 @@ public class MotionProfileGenerator {
                 / (2 * state2.getA() - 2 * state1.getA());
     }
 
+    private MotionProfileGenerator() {
+    }
 }

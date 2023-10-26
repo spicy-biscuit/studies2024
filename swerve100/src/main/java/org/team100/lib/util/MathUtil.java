@@ -12,7 +12,6 @@ public class MathUtil {
     /**
      * Returns the real solutions to the quadratic ax^2 + bx + c.
      */
-
     public static List<Double> solveQuadratic(double a, double b, double c) {
         double disc = b * b - 4 * a * c;
 
@@ -23,11 +22,13 @@ public class MathUtil {
                     (-b + Math.sqrt(disc)) / (2 * a),
                     (-b - Math.sqrt(disc)) / (2 * a));
         } else {
-            return new ArrayList<Double>();
+            return new ArrayList<>();
         }
     }
 
     public static boolean epsilonEquals(double x, double y) {
         return Math.abs(x - y) < EPSILON;
     }
+
+    private MathUtil() {}
 }
